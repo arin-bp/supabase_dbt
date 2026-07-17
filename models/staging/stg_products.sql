@@ -1,7 +1,7 @@
 {{
     config(
         materialized = 'table',
-        tags = ['supabase','stg','products'],
+        tags = ['snowflake','stg','products'],
         alias = 'stg_products'
     )
 }}

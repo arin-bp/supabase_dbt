@@ -1,7 +1,7 @@
 {{
     config(
         materialized='table',
-        tags=['supabase','int','customer_metrics'],
+        tags=['snowflake','int','customer_metrics'],
         alias='int_customer_metrics'
     )
 }}

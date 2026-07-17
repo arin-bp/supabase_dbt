@@ -1,16 +1,6 @@
-supabase_profile:
+snowflake_profile:
   target: snowflake
   outputs:
-    dev:
-      type: postgres
-      host: "{{ env_var('SUPABASE_DB_HOST', 'aws-0-ap-northeast-1.pooler.supabase.com') }}"
-      user: "{{ env_var('SUPABASE_DB_USER', 'postgres.elyiejkcwppzvadhgoyv') }}"
-      password: "{{ env_var('SUPABASE_DB_PASSWORD', 'igxhessn@#4146') }}"
-      port: "{{ env_var('SUPABASE_DB_PORT', '6543') | int }}"
-      dbname: "{{ env_var('SUPABASE_DB_NAME', 'postgres') }}"
-      schema: "{{ env_var('SUPABASE_DB_SCHEMA', 'public') }}"
-      threads: 4
-
     snowflake:
       type: snowflake
       account: IKJUREX-GV64642

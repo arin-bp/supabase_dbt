@@ -1,7 +1,7 @@
 {{
     config(
         materialized='table',
-        tags=['supabase','int','order_items'],
+        tags=['snowflake','int','order_items'],
         alias='int_order_items'
     )
 }}

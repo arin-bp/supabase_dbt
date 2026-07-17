@@ -1,7 +1,7 @@
 {{
     config(
         materialized='table',
-        tags=['supabase', 'stg', 'asset'],
+        tags=['snowflake', 'stg', 'asset'],
         alias='stg_customers',
     )
 }}
