@@ -1,0 +1,7 @@
+version: 2
+
+seeds:
+  - name: raw_temp_data
+    config:
+      alias: "{{ var('target_table', 'ecom_target') }}"
+      full_refresh: false
