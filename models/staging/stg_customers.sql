@@ -10,4 +10,4 @@ SELECT DISTINCT
     customer_first_name AS CUSTOMER_FIRST_NAME,
     customer_last_name AS CUSTOMER_LAST_NAME,
     customer_email AS CUSTOMER_EMAIL
-FROM {{ ref('raw_temp_data') }}
+FROM {{ source('raw_snowflake', var('source_table', 'ECOM_TABLE')) }}

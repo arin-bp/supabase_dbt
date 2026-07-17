@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: raw_snowflake
+    database: SOLVEFINS_DATA_V2
+    schema: PUBLIC
+    tables:
+      - name: ECOM_TABLE

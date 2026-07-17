@@ -1,5 +1,5 @@
 supabase_profile:
-  target: dev
+  target: snowflake
   outputs:
     dev:
       type: postgres
@@ -9,4 +9,15 @@ supabase_profile:
       port: "{{ env_var('SUPABASE_DB_PORT', '6543') | int }}"
       dbname: "{{ env_var('SUPABASE_DB_NAME', 'postgres') }}"
       schema: "{{ env_var('SUPABASE_DB_SCHEMA', 'public') }}"
+      threads: 4
+
+    snowflake:
+      type: snowflake
+      account: IKJUREX-GV64642
+      user: ARINDHIMAR
+      private_key_path: /home/user/rsa_key.p8
+      role: ACCOUNTADMIN
+      database: SOLVEFINS_DATA_V2
+      warehouse: COMPUTE_WH
+      schema: PUBLIC
       threads: 4

@@ -12,4 +12,4 @@ SELECT DISTINCT
     product_category AS PRODUCT_CATEGORY,
     unit_price AS UNIT_PRICE,
     discount_rate AS DISCOUNT_RATE
-FROM {{ ref('raw_temp_data') }}
+FROM {{ source('raw_snowflake', var('source_table', 'ECOM_TABLE')) }}

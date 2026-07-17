@@ -14,4 +14,4 @@ SELECT
     quantity AS QUANTITY,
     payment_method AS PAYMENT_METHOD,
     order_status AS ORDER_STATUS
-FROM {{ ref('raw_temp_data') }}
+FROM {{ source('raw_snowflake', var('source_table', 'ECOM_TABLE')) }}
