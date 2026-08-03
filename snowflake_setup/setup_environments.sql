@@ -117,13 +117,14 @@ GRANT ROLE DBT_PROD_ROLE TO USER SVC_DBT_PROD;
 
 -- -----------------------------------------------------------------------------
 -- STEP 5: Set RSA public keys on service accounts
--- (Generate key pairs locally first — see README below)
--- Replace placeholders with actual public key content (no header/footer lines)
+-- Keys were generated locally on 2026-08-03.
+-- Private keys (.p8 files) are in: snowflake_setup/rsa_keys/  (DO NOT COMMIT)
+-- Run these statements as ACCOUNTADMIN:
 -- -----------------------------------------------------------------------------
--- ALTER USER SVC_DBT_DEV  SET RSA_PUBLIC_KEY='MIIBIjANBgkq... (dev public key)';
--- ALTER USER SVC_DBT_SIT  SET RSA_PUBLIC_KEY='MIIBIjANBgkq... (sit public key)';
--- ALTER USER SVC_DBT_UAT  SET RSA_PUBLIC_KEY='MIIBIjANBgkq... (uat public key)';
--- ALTER USER SVC_DBT_PROD SET RSA_PUBLIC_KEY='MIIBIjANBgkq... (prod public key)';
+ALTER USER SVC_DBT_DEV  SET RSA_PUBLIC_KEY='MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwatfgq/ndy61qHla9vOdnzA+MHRfFXc2iCrix5KzvPHE7KkPuPksNvsNXgObJxbUZ2J6lOLVztKdYDH+0MSIKvJ+g7YF8YJGjVrUpdSQqiqthLLcMnHqiSLiGnEPlX87HfZ4neQbUMMtFok7iMqEh72KZ8Su3x8oK3CAXlmxP8EAD4a82FreyxDs5vsiiyYUMJMnA28wBQIU8Uxpro9N1YsD8kkV4gDfVamSnCaDhslBb6Z3OP5+gzd6NFU7R3ldQDJazKj9gWSftP5WnM9RL5Om4VtdCxfEkHSl9XFoCY0qql/Qqjr4Be3DxT8ZDLrBa+4X9zjNtjQLo9vFj4KN1QIDAQAB';
+ALTER USER SVC_DBT_SIT  SET RSA_PUBLIC_KEY='MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmJ/k7IDcM/bb2Y3If1OiKp0VZy3FeHxNv1IXQf8MJOv7tg26zY1QUAVKmhnyE3nYruGtGYr1mHwnCrf8D3s23/Sb/CpKWS4T/5gIexySA5zKgw0aV1tZxww1BYrziktAmGPPu6kyg6p226LGbRGCq30a0AqV1RTsMllMb4pxYjcMxOLUnHxcFD76iyQRql8hVneqidvgR9XD4CJjAD+9jwpRvuo3gCIkYg7VorFHSHau/u1PEFb4FvrojmfsOrPrjci11732tJm5dokxcYWgJXPkFiOZXMtO/QeQnMGz0ZAs4Mma9egCoj6Yelxg4rWapZV4zeTexZJ3PRY78oOV9wIDAQAB';
+ALTER USER SVC_DBT_UAT  SET RSA_PUBLIC_KEY='MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsqP/6NVZFt9PzASj7ThGihzIvpastBnCx2lVmMG/vAgaTrhwSBAGroYrdOQDIZgJU+MCowi5ag07Prys7ZK8tMz4IofyiDO7X/c2gVtKb5azWfmCraKDYR6z3pdReUzxZcYmjL90wfRR30e5rcZxklXcdfzG/4MEJ2zyMPiz84UTUXDr8aBItEf2jRI+YkIiclFa3jnyrls2sDo3FD6NFGTmCRlxY+j2gCgx06sPQLwYPAnXNlnKSoMkzvYwSzQAhfwWP1zngXRTiDy8nM6AzxUJ6A+jK3N0GwJiNwa0kHjPZeZJIJFUmRoVq50hP1LocWmGffHSbRc9396PsKyq7wIDAQAB';
+ALTER USER SVC_DBT_PROD SET RSA_PUBLIC_KEY='MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu2LbeZKKEBXpULtFBKiUWvRPePh6P3QXAAsFaC0pAUdY2JzWksqZsF2YAFaOQZWWsBe4c6kQEAEJixf1EzvhVQ2x6TevlgT7ia9YEZHZtcT0Y72DZuCNIx12QjON40L8YM1axP3jBXzWF4uIVdrdZTrvd1MB9si+GXAFC77DQastUCyOMTvS0+Cz0F9bIFV8cdMRf5lXTVJVV7dZzoRQHYI7m/ipOKMUbiW2nkEktav9T7npQrv7Ei+CszXUqJflHWE7Yz5EtHjyXuKEyIoUoSk9NZB0bHNuJ+ABUOZm9A+8Jg/b/hvoK3nZjsvWn0/ojI8XMDa7drAe/A2xPUsNkQIDAQAB';
 
 -- -----------------------------------------------------------------------------
 -- VERIFICATION

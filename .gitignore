@@ -4,6 +4,8 @@ logs/
 .env
 # dbt Cloud local user ID — not project-specific, should not be shared
 .user.yml
+# RSA private keys — NEVER commit these
+snowflake_setup/rsa_keys/
 # Note: profiles.yml is intentionally tracked in git.
 # It contains NO credentials — auth is handled by Snowflake's native
 # DBT Project object execution context (role-based).
