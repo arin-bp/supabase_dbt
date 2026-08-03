@@ -34,6 +34,11 @@ jobs:
       - name: Install Snowflake CLI
         run: pip install snowflake-cli
 
+      - name: Write private key to file
+        run: |
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" > /tmp/sf_key.p8
+          chmod 600 /tmp/sf_key.p8
+
       - name: Write Snowflake CLI config
         run: |
           mkdir -p ~/.snowflake
@@ -42,7 +47,7 @@ jobs:
           account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
           user = "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}"
           authenticator = "SNOWFLAKE_JWT"
-          private_key_raw = "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}"
+          private_key_path = "/tmp/sf_key.p8"
           role = "DBT_DEV_ROLE"
           warehouse = "SUPABASE_DEV_WH"
           database = "SUPABASE_DEV"
@@ -92,6 +97,11 @@ jobs:
       - name: Install Snowflake CLI
         run: pip install snowflake-cli
 
+      - name: Write private key to file
+        run: |
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" > /tmp/sf_key.p8
+          chmod 600 /tmp/sf_key.p8
+
       - name: Write Snowflake CLI config
         run: |
           mkdir -p ~/.snowflake
@@ -100,7 +110,7 @@ jobs:
           account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
           user = "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}"
           authenticator = "SNOWFLAKE_JWT"
-          private_key_raw = "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}"
+          private_key_path = "/tmp/sf_key.p8"
           role = "DBT_DEV_ROLE"
           warehouse = "SUPABASE_DEV_WH"
           database = "SUPABASE_DEV"
@@ -141,6 +151,11 @@ jobs:
       - name: Install Snowflake CLI
         run: pip install snowflake-cli
 
+      - name: Write private key to file
+        run: |
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}" > /tmp/sf_key.p8
+          chmod 600 /tmp/sf_key.p8
+
       - name: Write Snowflake CLI config
         run: |
           mkdir -p ~/.snowflake
@@ -149,7 +164,7 @@ jobs:
           account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
           user = "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}"
           authenticator = "SNOWFLAKE_JWT"
-          private_key_raw = "${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}"
+          private_key_path = "/tmp/sf_key.p8"
           role = "DBT_SIT_ROLE"
           warehouse = "SUPABASE_SIT_WH"
           database = "SUPABASE_SIT"
@@ -191,6 +206,11 @@ jobs:
       - name: Install Snowflake CLI
         run: pip install snowflake-cli
 
+      - name: Write private key to file
+        run: |
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}" > /tmp/sf_key.p8
+          chmod 600 /tmp/sf_key.p8
+
       - name: Write Snowflake CLI config
         run: |
           mkdir -p ~/.snowflake
@@ -199,7 +219,7 @@ jobs:
           account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
           user = "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}"
           authenticator = "SNOWFLAKE_JWT"
-          private_key_raw = "${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}"
+          private_key_path = "/tmp/sf_key.p8"
           role = "DBT_UAT_ROLE"
           warehouse = "SUPABASE_UAT_WH"
           database = "SUPABASE_UAT"
@@ -241,6 +261,11 @@ jobs:
       - name: Install Snowflake CLI
         run: pip install snowflake-cli
 
+      - name: Write private key to file
+        run: |
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}" > /tmp/sf_key.p8
+          chmod 600 /tmp/sf_key.p8
+
       - name: Write Snowflake CLI config
         run: |
           mkdir -p ~/.snowflake
@@ -249,7 +274,7 @@ jobs:
           account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
           user = "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}"
           authenticator = "SNOWFLAKE_JWT"
-          private_key_raw = "${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}"
+          private_key_path = "/tmp/sf_key.p8"
           role = "DBT_PROD_ROLE"
           warehouse = "SUPABASE_PROD_WH"
           database = "SUPABASE_PROD"
