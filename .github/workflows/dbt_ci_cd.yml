@@ -35,10 +35,13 @@ jobs:
           SNOWFLAKE_ROLE: DBT_DEV_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_DEV_WH
           SNOWFLAKE_DATABASE: SUPABASE_DEV
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow connection test -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
+            --database SUPABASE_DEV \
+            --schema PUBLIC
 
       - name: Deploy ephemeral CI project
         env:
@@ -49,6 +52,7 @@ jobs:
           SNOWFLAKE_ROLE: DBT_DEV_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_DEV_WH
           SNOWFLAKE_DATABASE: SUPABASE_DEV
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow dbt deploy supabase_ci_pr_${{ github.run_id }} \
             --source . \
@@ -57,7 +61,9 @@ jobs:
             --env-file-dir . \
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
+            --database SUPABASE_DEV \
+            --schema PUBLIC
 
       - name: Execute dbt compile
         env:
@@ -68,12 +74,15 @@ jobs:
           SNOWFLAKE_ROLE: DBT_DEV_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_DEV_WH
           SNOWFLAKE_DATABASE: SUPABASE_DEV
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow dbt execute supabase_ci_pr_${{ github.run_id }} \
             --command "dbt compile --target dev" \
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
+            --database SUPABASE_DEV \
+            --schema PUBLIC
 
       - name: Cleanup ephemeral project
         if: always()
@@ -85,10 +94,13 @@ jobs:
           SNOWFLAKE_ROLE: DBT_DEV_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_DEV_WH
           SNOWFLAKE_DATABASE: SUPABASE_DEV
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow dbt drop supabase_ci_pr_${{ github.run_id }} -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" || true
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
+            --database SUPABASE_DEV \
+            --schema PUBLIC || true
 
   # ──────────────────────────────────────────────────────────────
   # DEPLOY TO DEV
@@ -115,10 +127,13 @@ jobs:
           SNOWFLAKE_ROLE: DBT_DEV_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_DEV_WH
           SNOWFLAKE_DATABASE: SUPABASE_DEV
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow connection test -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
+            --database SUPABASE_DEV \
+            --schema PUBLIC
 
       - name: Deploy to DEV
         env:
@@ -129,6 +144,7 @@ jobs:
           SNOWFLAKE_ROLE: DBT_DEV_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_DEV_WH
           SNOWFLAKE_DATABASE: SUPABASE_DEV
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow dbt deploy supabase_dev \
             --source . \
@@ -137,7 +153,9 @@ jobs:
             --env-file-dir . \
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
+            --database SUPABASE_DEV \
+            --schema PUBLIC
 
       - name: Describe deployed project
         env:
@@ -148,10 +166,13 @@ jobs:
           SNOWFLAKE_ROLE: DBT_DEV_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_DEV_WH
           SNOWFLAKE_DATABASE: SUPABASE_DEV
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow dbt describe supabase_dev -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
+            --database SUPABASE_DEV \
+            --schema PUBLIC
 
   # ──────────────────────────────────────────────────────────────
   # DEPLOY TO SIT
@@ -178,10 +199,13 @@ jobs:
           SNOWFLAKE_ROLE: DBT_SIT_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_SIT_WH
           SNOWFLAKE_DATABASE: SUPABASE_SIT
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow connection test -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}" \
+            --database SUPABASE_SIT \
+            --schema PUBLIC
 
       - name: Deploy to SIT
         env:
@@ -192,6 +216,7 @@ jobs:
           SNOWFLAKE_ROLE: DBT_SIT_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_SIT_WH
           SNOWFLAKE_DATABASE: SUPABASE_SIT
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow dbt deploy supabase_sit \
             --source . \
@@ -200,7 +225,9 @@ jobs:
             --env-file-dir . \
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}" \
+            --database SUPABASE_SIT \
+            --schema PUBLIC
 
       - name: Describe deployed project
         env:
@@ -211,10 +238,13 @@ jobs:
           SNOWFLAKE_ROLE: DBT_SIT_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_SIT_WH
           SNOWFLAKE_DATABASE: SUPABASE_SIT
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow dbt describe supabase_sit -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}" \
+            --database SUPABASE_SIT \
+            --schema PUBLIC
 
   # ──────────────────────────────────────────────────────────────
   # DEPLOY TO UAT (Requires approval)
@@ -241,10 +271,13 @@ jobs:
           SNOWFLAKE_ROLE: DBT_UAT_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_UAT_WH
           SNOWFLAKE_DATABASE: SUPABASE_UAT
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow connection test -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}" \
+            --database SUPABASE_UAT \
+            --schema PUBLIC
 
       - name: Deploy to UAT
         env:
@@ -255,6 +288,7 @@ jobs:
           SNOWFLAKE_ROLE: DBT_UAT_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_UAT_WH
           SNOWFLAKE_DATABASE: SUPABASE_UAT
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow dbt deploy supabase_uat \
             --source . \
@@ -263,7 +297,9 @@ jobs:
             --env-file-dir . \
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}" \
+            --database SUPABASE_UAT \
+            --schema PUBLIC
 
       - name: Describe deployed project
         env:
@@ -274,10 +310,13 @@ jobs:
           SNOWFLAKE_ROLE: DBT_UAT_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_UAT_WH
           SNOWFLAKE_DATABASE: SUPABASE_UAT
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow dbt describe supabase_uat -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}" \
+            --database SUPABASE_UAT \
+            --schema PUBLIC
 
   # ──────────────────────────────────────────────────────────────
   # DEPLOY TO PROD (Requires approvals)
@@ -304,10 +343,13 @@ jobs:
           SNOWFLAKE_ROLE: DBT_PROD_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_PROD_WH
           SNOWFLAKE_DATABASE: SUPABASE_PROD
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow connection test -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}" \
+            --database SUPABASE_PROD \
+            --schema PUBLIC
 
       - name: Deploy to PROD
         env:
@@ -318,6 +360,7 @@ jobs:
           SNOWFLAKE_ROLE: DBT_PROD_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_PROD_WH
           SNOWFLAKE_DATABASE: SUPABASE_PROD
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow dbt deploy supabase_prod \
             --source . \
@@ -326,7 +369,9 @@ jobs:
             --env-file-dir . \
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}" \
+            --database SUPABASE_PROD \
+            --schema PUBLIC
 
       - name: Describe deployed project
         env:
@@ -337,7 +382,10 @@ jobs:
           SNOWFLAKE_ROLE: DBT_PROD_ROLE
           SNOWFLAKE_WAREHOUSE: SUPABASE_PROD_WH
           SNOWFLAKE_DATABASE: SUPABASE_PROD
+          SNOWFLAKE_SCHEMA: PUBLIC
         run: |
           snow dbt describe supabase_prod -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}"
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}" \
+            --database SUPABASE_PROD \
+            --schema PUBLIC
