@@ -58,7 +58,7 @@ jobs:
             --source . \
             --default-target dev \
             --dbt-version 1.9.4 \
-            --env-file-dir . \
+
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
@@ -150,7 +150,7 @@ jobs:
             --source . \
             --default-target dev \
             --dbt-version 1.9.4 \
-            --env-file-dir . \
+
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
@@ -222,7 +222,7 @@ jobs:
             --source . \
             --default-target sit \
             --dbt-version 1.9.4 \
-            --env-file-dir . \
+
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}" \
@@ -294,7 +294,7 @@ jobs:
             --source . \
             --default-target uat \
             --dbt-version 1.9.4 \
-            --env-file-dir . \
+
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}" \
@@ -366,7 +366,7 @@ jobs:
             --source . \
             --default-target prod \
             --dbt-version 1.9.4 \
-            --env-file-dir . \
+
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}" \
