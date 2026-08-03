@@ -33,7 +33,9 @@ jobs:
 
       - name: Configure Snowflake CLI default connection
         run: |
-          snow connection add default \
+          snow connection add \
+            --connection-name default \
+            --set-default \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
             --authenticator SNOWFLAKE_JWT \
@@ -86,7 +88,9 @@ jobs:
 
       - name: Configure Snowflake CLI default connection
         run: |
-          snow connection add default \
+          snow connection add \
+            --connection-name default \
+            --set-default \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
             --authenticator SNOWFLAKE_JWT \
@@ -132,7 +136,9 @@ jobs:
 
       - name: Configure Snowflake CLI default connection
         run: |
-          snow connection add default \
+          snow connection add \
+            --connection-name default \
+            --set-default \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}" \
             --authenticator SNOWFLAKE_JWT \
@@ -178,7 +184,9 @@ jobs:
 
       - name: Configure Snowflake CLI default connection
         run: |
-          snow connection add default \
+          snow connection add \
+            --connection-name default \
+            --set-default \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}" \
             --authenticator SNOWFLAKE_JWT \
@@ -224,7 +232,9 @@ jobs:
 
       - name: Configure Snowflake CLI default connection
         run: |
-          snow connection add default \
+          snow connection add \
+            --connection-name default \
+            --set-default \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}" \
             --authenticator SNOWFLAKE_JWT \
