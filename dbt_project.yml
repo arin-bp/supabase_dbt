@@ -14,3 +14,21 @@ snapshot-paths: ["snapshots"]
 clean-targets:
   - "target"
   - "dbt_packages"
+
+# Configuring models
+models:
+  snowflake_dbt:
+    # Target database is driven by env_var — set per environment in env.yml
+    +database: "{{ env_var('SNOWFLAKE_TARGET_DATABASE', 'SUPABASE_DEV') }}"
+    staging:
+      +schema: PUBLIC
+      +materialized: table
+    intermediate:
+      +schema: PUBLIC
+      +materialized: table
+
+vars:
+  # Source table in raw zone — overridable per environment
+  source_table: "{{ env_var('DBT_SOURCE_TABLE', 'ECOM_TABLE') }}"
+  # Seed alias target table name
+  target_table: "{{ env_var('DBT_TARGET_TABLE', 'ecom_target') }}"

@@ -1,0 +1,265 @@
+name: dbt CI/CD — Snowflake Native
+
+on:
+  push:
+    branches: [dev, sit, uat, main]
+  pull_request:
+    branches: [dev, sit, uat, main]
+
+# Prevent concurrent deploys to the same environment
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  # ──────────────────────────────────────────────────────────────
+  # PR VALIDATION
+  # Runs on every PR opened against dev/sit/uat/main.
+  # Deploys to a throwaway project object, runs dbt compile,
+  # then drops the object. No long-lived side effects.
+  # ──────────────────────────────────────────────────────────────
+  pr-validate:
+    name: "PR Validation — dbt compile"
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Snowflake CLI
+        run: pip install snowflake-cli
+
+      - name: Write Snowflake CLI config
+        run: |
+          mkdir -p ~/.snowflake
+          cat > ~/.snowflake/config.toml << 'EOF'
+          [connections.ci]
+          account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
+          user = "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}"
+          private_key_raw = "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}"
+          role = "DBT_DEV_ROLE"
+          warehouse = "SUPABASE_DEV_WH"
+          database = "SUPABASE_DEV"
+          EOF
+          chmod 600 ~/.snowflake/config.toml
+
+      - name: Deploy ephemeral CI project object
+        run: |
+          snow dbt deploy supabase_ci_pr_${{ github.run_id }} \
+            --source . \
+            --default-target dev \
+            --dbt-version 1.9.0 \
+            --env-file-dir . \
+            --connection ci
+
+      - name: Run dbt compile (validates SQL + Jinja syntax)
+        run: |
+          snow dbt execute supabase_ci_pr_${{ github.run_id }} \
+            --command "dbt compile --target dev" \
+            --connection ci
+
+      - name: Cleanup ephemeral project object
+        # Always clean up, even if compile fails
+        if: always()
+        run: |
+          snow dbt drop supabase_ci_pr_${{ github.run_id }} --connection ci || true
+
+  # ──────────────────────────────────────────────────────────────
+  # DEPLOY TO DEV
+  # Triggered on merge (push) to the `dev` branch.
+  # Creates/updates the `supabase_dev` DBT Project object.
+  # ──────────────────────────────────────────────────────────────
+  deploy-dev:
+    name: "Deploy → DEV"
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Snowflake CLI
+        run: pip install snowflake-cli
+
+      - name: Write Snowflake CLI config
+        run: |
+          mkdir -p ~/.snowflake
+          cat > ~/.snowflake/config.toml << 'EOF'
+          [connections.dev]
+          account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
+          user = "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}"
+          private_key_raw = "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}"
+          role = "DBT_DEV_ROLE"
+          warehouse = "SUPABASE_DEV_WH"
+          database = "SUPABASE_DEV"
+          EOF
+          chmod 600 ~/.snowflake/config.toml
+
+      - name: Deploy to DEV
+        run: |
+          snow dbt deploy supabase_dev \
+            --source . \
+            --default-target dev \
+            --dbt-version 1.9.0 \
+            --env-file-dir . \
+            --connection dev
+
+      - name: Report deployed version
+        run: |
+          snow dbt describe supabase_dev --connection dev
+
+  # ──────────────────────────────────────────────────────────────
+  # DEPLOY TO SIT
+  # Triggered on merge (push) to the `sit` branch.
+  # ──────────────────────────────────────────────────────────────
+  deploy-sit:
+    name: "Deploy → SIT"
+    if: github.event_name == 'push' && github.ref == 'refs/heads/sit'
+    runs-on: ubuntu-latest
+    environment: sit
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Snowflake CLI
+        run: pip install snowflake-cli
+
+      - name: Write Snowflake CLI config
+        run: |
+          mkdir -p ~/.snowflake
+          cat > ~/.snowflake/config.toml << 'EOF'
+          [connections.sit]
+          account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
+          user = "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}"
+          private_key_raw = "${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}"
+          role = "DBT_SIT_ROLE"
+          warehouse = "SUPABASE_SIT_WH"
+          database = "SUPABASE_SIT"
+          EOF
+          chmod 600 ~/.snowflake/config.toml
+
+      - name: Deploy to SIT
+        run: |
+          snow dbt deploy supabase_sit \
+            --source . \
+            --default-target sit \
+            --dbt-version 1.9.0 \
+            --env-file-dir . \
+            --connection sit
+
+      - name: Report deployed version
+        run: |
+          snow dbt describe supabase_sit --connection sit
+
+  # ──────────────────────────────────────────────────────────────
+  # DEPLOY TO UAT
+  # Triggered on merge to `uat`. Requires manual approval
+  # (configured in GitHub → Settings → Environments → uat).
+  # ──────────────────────────────────────────────────────────────
+  deploy-uat:
+    name: "Deploy → UAT"
+    if: github.event_name == 'push' && github.ref == 'refs/heads/uat'
+    runs-on: ubuntu-latest
+    environment: uat
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Snowflake CLI
+        run: pip install snowflake-cli
+
+      - name: Write Snowflake CLI config
+        run: |
+          mkdir -p ~/.snowflake
+          cat > ~/.snowflake/config.toml << 'EOF'
+          [connections.uat]
+          account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
+          user = "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}"
+          private_key_raw = "${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}"
+          role = "DBT_UAT_ROLE"
+          warehouse = "SUPABASE_UAT_WH"
+          database = "SUPABASE_UAT"
+          EOF
+          chmod 600 ~/.snowflake/config.toml
+
+      - name: Deploy to UAT
+        run: |
+          snow dbt deploy supabase_uat \
+            --source . \
+            --default-target uat \
+            --dbt-version 1.9.0 \
+            --env-file-dir . \
+            --connection uat
+
+      - name: Report deployed version
+        run: |
+          snow dbt describe supabase_uat --connection uat
+
+  # ──────────────────────────────────────────────────────────────
+  # DEPLOY TO PROD
+  # Triggered on merge to `main`. Requires 2 manual approvals
+  # (configured in GitHub → Settings → Environments → prod).
+  # ──────────────────────────────────────────────────────────────
+  deploy-prod:
+    name: "Deploy → PROD"
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Snowflake CLI
+        run: pip install snowflake-cli
+
+      - name: Write Snowflake CLI config
+        run: |
+          mkdir -p ~/.snowflake
+          cat > ~/.snowflake/config.toml << 'EOF'
+          [connections.prod]
+          account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
+          user = "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}"
+          private_key_raw = "${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}"
+          role = "DBT_PROD_ROLE"
+          warehouse = "SUPABASE_PROD_WH"
+          database = "SUPABASE_PROD"
+          EOF
+          chmod 600 ~/.snowflake/config.toml
+
+      - name: Deploy to PROD
+        run: |
+          snow dbt deploy supabase_prod \
+            --source . \
+            --default-target prod \
+            --dbt-version 1.9.0 \
+            --env-file-dir . \
+            --connection prod
+
+      - name: Report deployed version
+        run: |
+          snow dbt describe supabase_prod --connection prod

@@ -1,13 +1,34 @@
 snowflake_profile:
-  target: snowflake
+  target: dev
   outputs:
-    snowflake:
+    dev:
       type: snowflake
-      account: IKJUREX-GV64642
-      user: ARINDHIMAR
-      private_key_path: /home/user/rsa_key.p8
-      role: ACCOUNTADMIN
-      database: SOLVEFINS_DATA_V2
-      warehouse: COMPUTE_WH
+      database: SUPABASE_DEV
+      role: DBT_DEV_ROLE
       schema: PUBLIC
+      warehouse: SUPABASE_DEV_WH
       threads: 4
+
+    sit:
+      type: snowflake
+      database: SUPABASE_SIT
+      role: DBT_SIT_ROLE
+      schema: PUBLIC
+      warehouse: SUPABASE_SIT_WH
+      threads: 4
+
+    uat:
+      type: snowflake
+      database: SUPABASE_UAT
+      role: DBT_UAT_ROLE
+      schema: PUBLIC
+      warehouse: SUPABASE_UAT_WH
+      threads: 4
+
+    prod:
+      type: snowflake
+      database: SUPABASE_PROD
+      role: DBT_PROD_ROLE
+      schema: PUBLIC
+      warehouse: SUPABASE_PROD_WH
+      threads: 8
