@@ -36,10 +36,11 @@ jobs:
           snow connection add \
             --connection-name default \
             --default \
+            --no-interactive \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
             --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
+            --private-key-path /tmp/sf_key.p8 \
             --role DBT_DEV_ROLE \
             --warehouse SUPABASE_DEV_WH \
             --database SUPABASE_DEV \
@@ -91,10 +92,11 @@ jobs:
           snow connection add \
             --connection-name default \
             --default \
+            --no-interactive \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
             --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
+            --private-key-path /tmp/sf_key.p8 \
             --role DBT_DEV_ROLE \
             --warehouse SUPABASE_DEV_WH \
             --database SUPABASE_DEV \
@@ -139,10 +141,11 @@ jobs:
           snow connection add \
             --connection-name default \
             --default \
+            --no-interactive \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}" \
             --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
+            --private-key-path /tmp/sf_key.p8 \
             --role DBT_SIT_ROLE \
             --warehouse SUPABASE_SIT_WH \
             --database SUPABASE_SIT \
@@ -187,10 +190,11 @@ jobs:
           snow connection add \
             --connection-name default \
             --default \
+            --no-interactive \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}" \
             --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
+            --private-key-path /tmp/sf_key.p8 \
             --role DBT_UAT_ROLE \
             --warehouse SUPABASE_UAT_WH \
             --database SUPABASE_UAT \
@@ -235,10 +239,11 @@ jobs:
           snow connection add \
             --connection-name default \
             --default \
+            --no-interactive \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}" \
             --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
+            --private-key-path /tmp/sf_key.p8 \
             --role DBT_PROD_ROLE \
             --warehouse SUPABASE_PROD_WH \
             --database SUPABASE_PROD \
