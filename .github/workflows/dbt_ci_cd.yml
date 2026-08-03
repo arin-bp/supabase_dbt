@@ -35,7 +35,7 @@ jobs:
         run: |
           snow connection add \
             --connection-name default \
-            --set-default \
+            --default \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
             --authenticator SNOWFLAKE_JWT \
@@ -90,7 +90,7 @@ jobs:
         run: |
           snow connection add \
             --connection-name default \
-            --set-default \
+            --default \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
             --authenticator SNOWFLAKE_JWT \
@@ -138,7 +138,7 @@ jobs:
         run: |
           snow connection add \
             --connection-name default \
-            --set-default \
+            --default \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}" \
             --authenticator SNOWFLAKE_JWT \
@@ -186,7 +186,7 @@ jobs:
         run: |
           snow connection add \
             --connection-name default \
-            --set-default \
+            --default \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}" \
             --authenticator SNOWFLAKE_JWT \
@@ -234,7 +234,7 @@ jobs:
         run: |
           snow connection add \
             --connection-name default \
-            --set-default \
+            --default \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}" \
             --authenticator SNOWFLAKE_JWT \
