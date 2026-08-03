@@ -10,50 +10,9 @@ concurrency:
   group: deploy-${{ github.ref_name }}
   cancel-in-progress: false
 
-# ──────────────────────────────────────────────────────────────
-# Reusable key-write script (DRY — defined once, used in all jobs)
-# Written as an env var to avoid repeating 200 lines.
-# This Python script:
-#   1. Reads the secret from env var (bypasses shell interpretation)
-#   2. Auto-detects raw PEM vs base64-encoded PEM
-#   3. Normalises line endings (strips \r)
-#   4. Validates with cryptography library — FAILS FAST if key is bad
-#   5. Writes to /tmp/sf_key.p8 with chmod 600
-# ──────────────────────────────────────────────────────────────
-env:
-  WRITE_AND_VALIDATE_KEY: |
-    import os, base64, stat
-    from cryptography.hazmat.primitives.serialization import load_pem_private_key
-
-    raw = os.environ['SNOWFLAKE_PRIVATE_KEY'].strip()
-
-    # Auto-detect: raw PEM starts with "-----", base64 does not
-    if raw.startswith('-----'):
-        pem_bytes = (raw + '\n').encode()
-        print('Secret format: raw PEM  ✓')
-    else:
-        pem_bytes = base64.b64decode(raw)
-        print('Secret format: base64-encoded PEM  ✓')
-
-    # Normalise line endings (strip \r if any)
-    pem_bytes = pem_bytes.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
-
-    # TDD: validate before writing — fail fast with clear message
-    try:
-        key = load_pem_private_key(pem_bytes, password=None)
-        print(f'Key validation: PASS — {type(key).__name__} {key.key_size}-bit  ✓')
-    except Exception as e:
-        print(f'Key validation: FAIL — {e}')
-        raise SystemExit(1)
-
-    with open('/tmp/sf_key.p8', 'wb') as f:
-        f.write(pem_bytes)
-    os.chmod('/tmp/sf_key.p8', stat.S_IRUSR | stat.S_IWUSR)
-    print('Written: /tmp/sf_key.p8  ✓')
-
 jobs:
   # ──────────────────────────────────────────────────────────────
-  # PR VALIDATION
+  # PR VALIDATION — TDD Smoke test & ephemeral compilation
   # ──────────────────────────────────────────────────────────────
   pr-validate:
     name: "PR Validation — dbt compile"
@@ -61,58 +20,67 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install Snowflake CLI
-        run: pip install snowflake-cli cryptography
 
-      - name: Write + validate private key
+      - name: Setup Snowflake CLI
+        uses: snowflakedb/snowflake-actions@v3
+        with:
+          cli-version: "latest"
+
+      # TDD Test Step: Verify connection before running any deploy commands
+      - name: "TDD Test: Verify Snowflake Connection (DEV)"
         env:
-          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
-        run: python - <<< "$WRITE_AND_VALIDATE_KEY"
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_DEV }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
+          SNOWFLAKE_ROLE: DBT_DEV_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_DEV_WH
+          SNOWFLAKE_DATABASE: SUPABASE_DEV
+        run: snow connection test -x
 
       - name: Deploy ephemeral CI project
+        env:
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_DEV }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
+          SNOWFLAKE_ROLE: DBT_DEV_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_DEV_WH
+          SNOWFLAKE_DATABASE: SUPABASE_DEV
         run: |
           snow dbt deploy supabase_ci_pr_${{ github.run_id }} \
             --source . \
             --default-target dev \
             --dbt-version 1.9.0 \
             --env-file-dir . \
-            --temporary-connection \
-            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
-            --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
-            --role DBT_DEV_ROLE \
-            --warehouse SUPABASE_DEV_WH \
-            --database SUPABASE_DEV
+            -x
 
-      - name: dbt compile
+      - name: Execute dbt compile
+        env:
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_DEV }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
+          SNOWFLAKE_ROLE: DBT_DEV_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_DEV_WH
+          SNOWFLAKE_DATABASE: SUPABASE_DEV
         run: |
           snow dbt execute supabase_ci_pr_${{ github.run_id }} \
             --command "dbt compile --target dev" \
-            --temporary-connection \
-            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
-            --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
-            --role DBT_DEV_ROLE \
-            --warehouse SUPABASE_DEV_WH \
-            --database SUPABASE_DEV
+            -x
 
       - name: Cleanup ephemeral project
         if: always()
+        env:
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_DEV }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
+          SNOWFLAKE_ROLE: DBT_DEV_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_DEV_WH
+          SNOWFLAKE_DATABASE: SUPABASE_DEV
         run: |
-          snow dbt drop supabase_ci_pr_${{ github.run_id }} \
-            --temporary-connection \
-            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
-            --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
-            --role DBT_DEV_ROLE \
-            --warehouse SUPABASE_DEV_WH \
-            --database SUPABASE_DEV || true
+          snow dbt drop supabase_ci_pr_${{ github.run_id }} -x || true
 
   # ──────────────────────────────────────────────────────────────
   # DEPLOY TO DEV
@@ -124,44 +92,51 @@ jobs:
     environment: dev
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install Snowflake CLI
-        run: pip install snowflake-cli cryptography
 
-      - name: Write + validate private key
+      - name: Setup Snowflake CLI
+        uses: snowflakedb/snowflake-actions@v3
+        with:
+          cli-version: "latest"
+
+      - name: "TDD Test: Verify Connection (DEV)"
         env:
-          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
-        run: python - <<< "$WRITE_AND_VALIDATE_KEY"
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_DEV }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
+          SNOWFLAKE_ROLE: DBT_DEV_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_DEV_WH
+          SNOWFLAKE_DATABASE: SUPABASE_DEV
+        run: snow connection test -x
 
       - name: Deploy to DEV
+        env:
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_DEV }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
+          SNOWFLAKE_ROLE: DBT_DEV_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_DEV_WH
+          SNOWFLAKE_DATABASE: SUPABASE_DEV
         run: |
           snow dbt deploy supabase_dev \
             --source . \
             --default-target dev \
             --dbt-version 1.9.0 \
             --env-file-dir . \
-            --temporary-connection \
-            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
-            --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
-            --role DBT_DEV_ROLE \
-            --warehouse SUPABASE_DEV_WH \
-            --database SUPABASE_DEV
+            -x
 
-      - name: Report deployed version
+      - name: Describe deployed project
+        env:
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_DEV }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
+          SNOWFLAKE_ROLE: DBT_DEV_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_DEV_WH
+          SNOWFLAKE_DATABASE: SUPABASE_DEV
         run: |
-          snow dbt describe supabase_dev \
-            --temporary-connection \
-            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
-            --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
-            --role DBT_DEV_ROLE \
-            --warehouse SUPABASE_DEV_WH \
-            --database SUPABASE_DEV
+          snow dbt describe supabase_dev -x
 
   # ──────────────────────────────────────────────────────────────
   # DEPLOY TO SIT
@@ -173,47 +148,54 @@ jobs:
     environment: sit
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install Snowflake CLI
-        run: pip install snowflake-cli cryptography
 
-      - name: Write + validate private key
+      - name: Setup Snowflake CLI
+        uses: snowflakedb/snowflake-actions@v3
+        with:
+          cli-version: "latest"
+
+      - name: "TDD Test: Verify Connection (SIT)"
         env:
-          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}
-        run: python - <<< "$WRITE_AND_VALIDATE_KEY"
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_SIT }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}
+          SNOWFLAKE_ROLE: DBT_SIT_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_SIT_WH
+          SNOWFLAKE_DATABASE: SUPABASE_SIT
+        run: snow connection test -x
 
       - name: Deploy to SIT
+        env:
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_SIT }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}
+          SNOWFLAKE_ROLE: DBT_SIT_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_SIT_WH
+          SNOWFLAKE_DATABASE: SUPABASE_SIT
         run: |
           snow dbt deploy supabase_sit \
             --source . \
             --default-target sit \
             --dbt-version 1.9.0 \
             --env-file-dir . \
-            --temporary-connection \
-            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}" \
-            --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
-            --role DBT_SIT_ROLE \
-            --warehouse SUPABASE_SIT_WH \
-            --database SUPABASE_SIT
+            -x
 
-      - name: Report deployed version
+      - name: Describe deployed project
+        env:
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_SIT }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}
+          SNOWFLAKE_ROLE: DBT_SIT_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_SIT_WH
+          SNOWFLAKE_DATABASE: SUPABASE_SIT
         run: |
-          snow dbt describe supabase_sit \
-            --temporary-connection \
-            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}" \
-            --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
-            --role DBT_SIT_ROLE \
-            --warehouse SUPABASE_SIT_WH \
-            --database SUPABASE_SIT
+          snow dbt describe supabase_sit -x
 
   # ──────────────────────────────────────────────────────────────
-  # DEPLOY TO UAT — requires manual approval
+  # DEPLOY TO UAT (Requires approval)
   # ──────────────────────────────────────────────────────────────
   deploy-uat:
     name: "Deploy → UAT"
@@ -222,47 +204,54 @@ jobs:
     environment: uat
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install Snowflake CLI
-        run: pip install snowflake-cli cryptography
 
-      - name: Write + validate private key
+      - name: Setup Snowflake CLI
+        uses: snowflakedb/snowflake-actions@v3
+        with:
+          cli-version: "latest"
+
+      - name: "TDD Test: Verify Connection (UAT)"
         env:
-          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}
-        run: python - <<< "$WRITE_AND_VALIDATE_KEY"
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_UAT }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}
+          SNOWFLAKE_ROLE: DBT_UAT_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_UAT_WH
+          SNOWFLAKE_DATABASE: SUPABASE_UAT
+        run: snow connection test -x
 
       - name: Deploy to UAT
+        env:
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_UAT }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}
+          SNOWFLAKE_ROLE: DBT_UAT_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_UAT_WH
+          SNOWFLAKE_DATABASE: SUPABASE_UAT
         run: |
           snow dbt deploy supabase_uat \
             --source . \
             --default-target uat \
             --dbt-version 1.9.0 \
             --env-file-dir . \
-            --temporary-connection \
-            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}" \
-            --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
-            --role DBT_UAT_ROLE \
-            --warehouse SUPABASE_UAT_WH \
-            --database SUPABASE_UAT
+            -x
 
-      - name: Report deployed version
+      - name: Describe deployed project
+        env:
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_UAT }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}
+          SNOWFLAKE_ROLE: DBT_UAT_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_UAT_WH
+          SNOWFLAKE_DATABASE: SUPABASE_UAT
         run: |
-          snow dbt describe supabase_uat \
-            --temporary-connection \
-            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}" \
-            --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
-            --role DBT_UAT_ROLE \
-            --warehouse SUPABASE_UAT_WH \
-            --database SUPABASE_UAT
+          snow dbt describe supabase_uat -x
 
   # ──────────────────────────────────────────────────────────────
-  # DEPLOY TO PROD — requires 2 manual approvals
+  # DEPLOY TO PROD (Requires approvals)
   # ──────────────────────────────────────────────────────────────
   deploy-prod:
     name: "Deploy → PROD"
@@ -271,41 +260,48 @@ jobs:
     environment: prod
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install Snowflake CLI
-        run: pip install snowflake-cli cryptography
 
-      - name: Write + validate private key
+      - name: Setup Snowflake CLI
+        uses: snowflakedb/snowflake-actions@v3
+        with:
+          cli-version: "latest"
+
+      - name: "TDD Test: Verify Connection (PROD)"
         env:
-          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}
-        run: python - <<< "$WRITE_AND_VALIDATE_KEY"
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_PROD }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}
+          SNOWFLAKE_ROLE: DBT_PROD_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_PROD_WH
+          SNOWFLAKE_DATABASE: SUPABASE_PROD
+        run: snow connection test -x
 
       - name: Deploy to PROD
+        env:
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_PROD }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}
+          SNOWFLAKE_ROLE: DBT_PROD_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_PROD_WH
+          SNOWFLAKE_DATABASE: SUPABASE_PROD
         run: |
           snow dbt deploy supabase_prod \
             --source . \
             --default-target prod \
             --dbt-version 1.9.0 \
             --env-file-dir . \
-            --temporary-connection \
-            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}" \
-            --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
-            --role DBT_PROD_ROLE \
-            --warehouse SUPABASE_PROD_WH \
-            --database SUPABASE_PROD
+            -x
 
-      - name: Report deployed version
+      - name: Describe deployed project
+        env:
+          SNOWFLAKE_AUTHENTICATOR: SNOWFLAKE_JWT
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_SVC_USER_PROD }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}
+          SNOWFLAKE_ROLE: DBT_PROD_ROLE
+          SNOWFLAKE_WAREHOUSE: SUPABASE_PROD_WH
+          SNOWFLAKE_DATABASE: SUPABASE_PROD
         run: |
-          snow dbt describe supabase_prod \
-            --temporary-connection \
-            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}" \
-            --authenticator SNOWFLAKE_JWT \
-            --private-key-file /tmp/sf_key.p8 \
-            --role DBT_PROD_ROLE \
-            --warehouse SUPABASE_PROD_WH \
-            --database SUPABASE_PROD
+          snow dbt describe supabase_prod -x
