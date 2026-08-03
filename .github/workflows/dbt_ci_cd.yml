@@ -36,7 +36,7 @@ jobs:
 
       - name: Write private key to file
         run: |
-          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" > /tmp/sf_key.p8
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" | base64 -d > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
 
       - name: Write Snowflake CLI config
@@ -99,7 +99,7 @@ jobs:
 
       - name: Write private key to file
         run: |
-          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" > /tmp/sf_key.p8
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" | base64 -d > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
 
       - name: Write Snowflake CLI config
@@ -153,7 +153,7 @@ jobs:
 
       - name: Write private key to file
         run: |
-          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}" > /tmp/sf_key.p8
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}" | base64 -d > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
 
       - name: Write Snowflake CLI config
@@ -208,7 +208,7 @@ jobs:
 
       - name: Write private key to file
         run: |
-          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}" > /tmp/sf_key.p8
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}" | base64 -d > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
 
       - name: Write Snowflake CLI config
@@ -263,7 +263,7 @@ jobs:
 
       - name: Write private key to file
         run: |
-          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}" > /tmp/sf_key.p8
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}" | base64 -d > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
 
       - name: Write Snowflake CLI config
