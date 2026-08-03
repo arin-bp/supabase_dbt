@@ -6,14 +6,54 @@ on:
   pull_request:
     branches: [dev, sit, uat, main]
 
-# Prevent concurrent deploys to the same environment
 concurrency:
   group: deploy-${{ github.ref_name }}
   cancel-in-progress: false
 
+# ──────────────────────────────────────────────────────────────
+# Reusable key-write script (DRY — defined once, used in all jobs)
+# Written as an env var to avoid repeating 200 lines.
+# This Python script:
+#   1. Reads the secret from env var (bypasses shell interpretation)
+#   2. Auto-detects raw PEM vs base64-encoded PEM
+#   3. Normalises line endings (strips \r)
+#   4. Validates with cryptography library — FAILS FAST if key is bad
+#   5. Writes to /tmp/sf_key.p8 with chmod 600
+# ──────────────────────────────────────────────────────────────
+env:
+  WRITE_AND_VALIDATE_KEY: |
+    import os, base64, stat
+    from cryptography.hazmat.primitives.serialization import load_pem_private_key
+
+    raw = os.environ['SNOWFLAKE_PRIVATE_KEY'].strip()
+
+    # Auto-detect: raw PEM starts with "-----", base64 does not
+    if raw.startswith('-----'):
+        pem_bytes = (raw + '\n').encode()
+        print('Secret format: raw PEM  ✓')
+    else:
+        pem_bytes = base64.b64decode(raw)
+        print('Secret format: base64-encoded PEM  ✓')
+
+    # Normalise line endings (strip \r if any)
+    pem_bytes = pem_bytes.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+
+    # TDD: validate before writing — fail fast with clear message
+    try:
+        key = load_pem_private_key(pem_bytes, password=None)
+        print(f'Key validation: PASS — {type(key).__name__} {key.key_size}-bit  ✓')
+    except Exception as e:
+        print(f'Key validation: FAIL — {e}')
+        raise SystemExit(1)
+
+    with open('/tmp/sf_key.p8', 'wb') as f:
+        f.write(pem_bytes)
+    os.chmod('/tmp/sf_key.p8', stat.S_IRUSR | stat.S_IWUSR)
+    print('Written: /tmp/sf_key.p8  ✓')
+
 jobs:
   # ──────────────────────────────────────────────────────────────
-  # PR VALIDATION — ephemeral compile check
+  # PR VALIDATION
   # ──────────────────────────────────────────────────────────────
   pr-validate:
     name: "PR Validation — dbt compile"
@@ -21,27 +61,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install Snowflake CLI
-        run: pip install snowflake-cli
+        run: pip install snowflake-cli cryptography
 
-      - name: Write private key (TDD — validate before deploy)
+      - name: Write + validate private key
         env:
-          SNOWFLAKE_KEY_B64: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
-        run: |
-          printf '%s' "$SNOWFLAKE_KEY_B64" | base64 -d > /tmp/sf_key.p8
-          chmod 600 /tmp/sf_key.p8
-          # Fail fast: validate key is readable PKCS8 before attempting any Snowflake call
-          python -c "
-          from cryptography.hazmat.primitives.serialization import load_pem_private_key
-          with open('/tmp/sf_key.p8','rb') as f: d = f.read()
-          k = load_pem_private_key(d, password=None)
-          print(f'PASS: {type(k).__name__} {k.key_size}-bit')
-          "
+          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
+        run: python - <<< "$WRITE_AND_VALIDATE_KEY"
 
       - name: Deploy ephemeral CI project
         run: |
@@ -59,7 +88,7 @@ jobs:
             --warehouse SUPABASE_DEV_WH \
             --database SUPABASE_DEV
 
-      - name: dbt compile (syntax + Jinja check)
+      - name: dbt compile
         run: |
           snow dbt execute supabase_ci_pr_${{ github.run_id }} \
             --command "dbt compile --target dev" \
@@ -72,7 +101,7 @@ jobs:
             --warehouse SUPABASE_DEV_WH \
             --database SUPABASE_DEV
 
-      - name: Cleanup ephemeral project object
+      - name: Cleanup ephemeral project
         if: always()
         run: |
           snow dbt drop supabase_ci_pr_${{ github.run_id }} \
@@ -99,20 +128,12 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install Snowflake CLI
-        run: pip install snowflake-cli
+        run: pip install snowflake-cli cryptography
 
       - name: Write + validate private key
         env:
-          SNOWFLAKE_KEY_B64: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
-        run: |
-          printf '%s' "$SNOWFLAKE_KEY_B64" | base64 -d > /tmp/sf_key.p8
-          chmod 600 /tmp/sf_key.p8
-          python -c "
-          from cryptography.hazmat.primitives.serialization import load_pem_private_key
-          with open('/tmp/sf_key.p8','rb') as f: d = f.read()
-          k = load_pem_private_key(d, password=None)
-          print(f'PASS: {type(k).__name__} {k.key_size}-bit')
-          "
+          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
+        run: python - <<< "$WRITE_AND_VALIDATE_KEY"
 
       - name: Deploy to DEV
         run: |
@@ -156,20 +177,12 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install Snowflake CLI
-        run: pip install snowflake-cli
+        run: pip install snowflake-cli cryptography
 
       - name: Write + validate private key
         env:
-          SNOWFLAKE_KEY_B64: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}
-        run: |
-          printf '%s' "$SNOWFLAKE_KEY_B64" | base64 -d > /tmp/sf_key.p8
-          chmod 600 /tmp/sf_key.p8
-          python -c "
-          from cryptography.hazmat.primitives.serialization import load_pem_private_key
-          with open('/tmp/sf_key.p8','rb') as f: d = f.read()
-          k = load_pem_private_key(d, password=None)
-          print(f'PASS: {type(k).__name__} {k.key_size}-bit')
-          "
+          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}
+        run: python - <<< "$WRITE_AND_VALIDATE_KEY"
 
       - name: Deploy to SIT
         run: |
@@ -213,20 +226,12 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install Snowflake CLI
-        run: pip install snowflake-cli
+        run: pip install snowflake-cli cryptography
 
       - name: Write + validate private key
         env:
-          SNOWFLAKE_KEY_B64: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}
-        run: |
-          printf '%s' "$SNOWFLAKE_KEY_B64" | base64 -d > /tmp/sf_key.p8
-          chmod 600 /tmp/sf_key.p8
-          python -c "
-          from cryptography.hazmat.primitives.serialization import load_pem_private_key
-          with open('/tmp/sf_key.p8','rb') as f: d = f.read()
-          k = load_pem_private_key(d, password=None)
-          print(f'PASS: {type(k).__name__} {k.key_size}-bit')
-          "
+          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}
+        run: python - <<< "$WRITE_AND_VALIDATE_KEY"
 
       - name: Deploy to UAT
         run: |
@@ -270,20 +275,12 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install Snowflake CLI
-        run: pip install snowflake-cli
+        run: pip install snowflake-cli cryptography
 
       - name: Write + validate private key
         env:
-          SNOWFLAKE_KEY_B64: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}
-        run: |
-          printf '%s' "$SNOWFLAKE_KEY_B64" | base64 -d > /tmp/sf_key.p8
-          chmod 600 /tmp/sf_key.p8
-          python -c "
-          from cryptography.hazmat.primitives.serialization import load_pem_private_key
-          with open('/tmp/sf_key.p8','rb') as f: d = f.read()
-          k = load_pem_private_key(d, password=None)
-          print(f'PASS: {type(k).__name__} {k.key_size}-bit')
-          "
+          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}
+        run: python - <<< "$WRITE_AND_VALIDATE_KEY"
 
       - name: Deploy to PROD
         run: |
