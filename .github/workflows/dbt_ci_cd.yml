@@ -13,72 +13,80 @@ concurrency:
 
 jobs:
   # ──────────────────────────────────────────────────────────────
-  # PR VALIDATION
-  # Runs on every PR opened against dev/sit/uat/main.
-  # Deploys to a throwaway project object, runs dbt compile,
-  # then drops the object. No long-lived side effects.
+  # PR VALIDATION — ephemeral compile check
   # ──────────────────────────────────────────────────────────────
   pr-validate:
     name: "PR Validation — dbt compile"
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install Snowflake CLI
         run: pip install snowflake-cli
 
-      - name: Write private key to file
+      - name: Write private key (TDD — validate before deploy)
+        env:
+          SNOWFLAKE_KEY_B64: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
         run: |
-          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" | base64 -d > /tmp/sf_key.p8
+          printf '%s' "$SNOWFLAKE_KEY_B64" | base64 -d > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
+          # Fail fast: validate key is readable PKCS8 before attempting any Snowflake call
+          python -c "
+          from cryptography.hazmat.primitives.serialization import load_pem_private_key
+          with open('/tmp/sf_key.p8','rb') as f: d = f.read()
+          k = load_pem_private_key(d, password=None)
+          print(f'PASS: {type(k).__name__} {k.key_size}-bit')
+          "
 
-      - name: Write Snowflake CLI config
-        run: |
-          mkdir -p ~/.snowflake
-          cat > ~/.snowflake/config.toml << 'EOF'
-          [connections.ci]
-          account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
-          user = "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}"
-          authenticator = "SNOWFLAKE_JWT"
-          private_key_path = "/tmp/sf_key.p8"
-          role = "DBT_DEV_ROLE"
-          warehouse = "SUPABASE_DEV_WH"
-          database = "SUPABASE_DEV"
-          EOF
-          chmod 600 ~/.snowflake/config.toml
-
-      - name: Deploy ephemeral CI project object
+      - name: Deploy ephemeral CI project
         run: |
           snow dbt deploy supabase_ci_pr_${{ github.run_id }} \
             --source . \
             --default-target dev \
             --dbt-version 1.9.0 \
             --env-file-dir . \
-            --connection ci
+            --temporary-connection \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-file /tmp/sf_key.p8 \
+            --role DBT_DEV_ROLE \
+            --warehouse SUPABASE_DEV_WH \
+            --database SUPABASE_DEV
 
-      - name: Run dbt compile (validates SQL + Jinja syntax)
+      - name: dbt compile (syntax + Jinja check)
         run: |
           snow dbt execute supabase_ci_pr_${{ github.run_id }} \
             --command "dbt compile --target dev" \
-            --connection ci
+            --temporary-connection \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-file /tmp/sf_key.p8 \
+            --role DBT_DEV_ROLE \
+            --warehouse SUPABASE_DEV_WH \
+            --database SUPABASE_DEV
 
       - name: Cleanup ephemeral project object
-        # Always clean up, even if compile fails
         if: always()
         run: |
-          snow dbt drop supabase_ci_pr_${{ github.run_id }} --connection ci || true
+          snow dbt drop supabase_ci_pr_${{ github.run_id }} \
+            --temporary-connection \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-file /tmp/sf_key.p8 \
+            --role DBT_DEV_ROLE \
+            --warehouse SUPABASE_DEV_WH \
+            --database SUPABASE_DEV || true
 
   # ──────────────────────────────────────────────────────────────
   # DEPLOY TO DEV
-  # Triggered on merge (push) to the `dev` branch.
-  # Creates/updates the `supabase_dev` DBT Project object.
   # ──────────────────────────────────────────────────────────────
   deploy-dev:
     name: "Deploy → DEV"
@@ -86,36 +94,25 @@ jobs:
     runs-on: ubuntu-latest
     environment: dev
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install Snowflake CLI
         run: pip install snowflake-cli
 
-      - name: Write private key to file
+      - name: Write + validate private key
+        env:
+          SNOWFLAKE_KEY_B64: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}
         run: |
-          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" | base64 -d > /tmp/sf_key.p8
+          printf '%s' "$SNOWFLAKE_KEY_B64" | base64 -d > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
-
-      - name: Write Snowflake CLI config
-        run: |
-          mkdir -p ~/.snowflake
-          cat > ~/.snowflake/config.toml << 'EOF'
-          [connections.dev]
-          account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
-          user = "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}"
-          authenticator = "SNOWFLAKE_JWT"
-          private_key_path = "/tmp/sf_key.p8"
-          role = "DBT_DEV_ROLE"
-          warehouse = "SUPABASE_DEV_WH"
-          database = "SUPABASE_DEV"
-          EOF
-          chmod 600 ~/.snowflake/config.toml
+          python -c "
+          from cryptography.hazmat.primitives.serialization import load_pem_private_key
+          with open('/tmp/sf_key.p8','rb') as f: d = f.read()
+          k = load_pem_private_key(d, password=None)
+          print(f'PASS: {type(k).__name__} {k.key_size}-bit')
+          "
 
       - name: Deploy to DEV
         run: |
@@ -124,15 +121,29 @@ jobs:
             --default-target dev \
             --dbt-version 1.9.0 \
             --env-file-dir . \
-            --connection dev
+            --temporary-connection \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-file /tmp/sf_key.p8 \
+            --role DBT_DEV_ROLE \
+            --warehouse SUPABASE_DEV_WH \
+            --database SUPABASE_DEV
 
       - name: Report deployed version
         run: |
-          snow dbt describe supabase_dev --connection dev
+          snow dbt describe supabase_dev \
+            --temporary-connection \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-file /tmp/sf_key.p8 \
+            --role DBT_DEV_ROLE \
+            --warehouse SUPABASE_DEV_WH \
+            --database SUPABASE_DEV
 
   # ──────────────────────────────────────────────────────────────
   # DEPLOY TO SIT
-  # Triggered on merge (push) to the `sit` branch.
   # ──────────────────────────────────────────────────────────────
   deploy-sit:
     name: "Deploy → SIT"
@@ -140,36 +151,25 @@ jobs:
     runs-on: ubuntu-latest
     environment: sit
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install Snowflake CLI
         run: pip install snowflake-cli
 
-      - name: Write private key to file
+      - name: Write + validate private key
+        env:
+          SNOWFLAKE_KEY_B64: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}
         run: |
-          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}" | base64 -d > /tmp/sf_key.p8
+          printf '%s' "$SNOWFLAKE_KEY_B64" | base64 -d > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
-
-      - name: Write Snowflake CLI config
-        run: |
-          mkdir -p ~/.snowflake
-          cat > ~/.snowflake/config.toml << 'EOF'
-          [connections.sit]
-          account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
-          user = "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}"
-          authenticator = "SNOWFLAKE_JWT"
-          private_key_path = "/tmp/sf_key.p8"
-          role = "DBT_SIT_ROLE"
-          warehouse = "SUPABASE_SIT_WH"
-          database = "SUPABASE_SIT"
-          EOF
-          chmod 600 ~/.snowflake/config.toml
+          python -c "
+          from cryptography.hazmat.primitives.serialization import load_pem_private_key
+          with open('/tmp/sf_key.p8','rb') as f: d = f.read()
+          k = load_pem_private_key(d, password=None)
+          print(f'PASS: {type(k).__name__} {k.key_size}-bit')
+          "
 
       - name: Deploy to SIT
         run: |
@@ -178,16 +178,29 @@ jobs:
             --default-target sit \
             --dbt-version 1.9.0 \
             --env-file-dir . \
-            --connection sit
+            --temporary-connection \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-file /tmp/sf_key.p8 \
+            --role DBT_SIT_ROLE \
+            --warehouse SUPABASE_SIT_WH \
+            --database SUPABASE_SIT
 
       - name: Report deployed version
         run: |
-          snow dbt describe supabase_sit --connection sit
+          snow dbt describe supabase_sit \
+            --temporary-connection \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-file /tmp/sf_key.p8 \
+            --role DBT_SIT_ROLE \
+            --warehouse SUPABASE_SIT_WH \
+            --database SUPABASE_SIT
 
   # ──────────────────────────────────────────────────────────────
-  # DEPLOY TO UAT
-  # Triggered on merge to `uat`. Requires manual approval
-  # (configured in GitHub → Settings → Environments → uat).
+  # DEPLOY TO UAT — requires manual approval
   # ──────────────────────────────────────────────────────────────
   deploy-uat:
     name: "Deploy → UAT"
@@ -195,36 +208,25 @@ jobs:
     runs-on: ubuntu-latest
     environment: uat
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install Snowflake CLI
         run: pip install snowflake-cli
 
-      - name: Write private key to file
+      - name: Write + validate private key
+        env:
+          SNOWFLAKE_KEY_B64: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}
         run: |
-          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}" | base64 -d > /tmp/sf_key.p8
+          printf '%s' "$SNOWFLAKE_KEY_B64" | base64 -d > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
-
-      - name: Write Snowflake CLI config
-        run: |
-          mkdir -p ~/.snowflake
-          cat > ~/.snowflake/config.toml << 'EOF'
-          [connections.uat]
-          account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
-          user = "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}"
-          authenticator = "SNOWFLAKE_JWT"
-          private_key_path = "/tmp/sf_key.p8"
-          role = "DBT_UAT_ROLE"
-          warehouse = "SUPABASE_UAT_WH"
-          database = "SUPABASE_UAT"
-          EOF
-          chmod 600 ~/.snowflake/config.toml
+          python -c "
+          from cryptography.hazmat.primitives.serialization import load_pem_private_key
+          with open('/tmp/sf_key.p8','rb') as f: d = f.read()
+          k = load_pem_private_key(d, password=None)
+          print(f'PASS: {type(k).__name__} {k.key_size}-bit')
+          "
 
       - name: Deploy to UAT
         run: |
@@ -233,16 +235,29 @@ jobs:
             --default-target uat \
             --dbt-version 1.9.0 \
             --env-file-dir . \
-            --connection uat
+            --temporary-connection \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-file /tmp/sf_key.p8 \
+            --role DBT_UAT_ROLE \
+            --warehouse SUPABASE_UAT_WH \
+            --database SUPABASE_UAT
 
       - name: Report deployed version
         run: |
-          snow dbt describe supabase_uat --connection uat
+          snow dbt describe supabase_uat \
+            --temporary-connection \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-file /tmp/sf_key.p8 \
+            --role DBT_UAT_ROLE \
+            --warehouse SUPABASE_UAT_WH \
+            --database SUPABASE_UAT
 
   # ──────────────────────────────────────────────────────────────
-  # DEPLOY TO PROD
-  # Triggered on merge to `main`. Requires 2 manual approvals
-  # (configured in GitHub → Settings → Environments → prod).
+  # DEPLOY TO PROD — requires 2 manual approvals
   # ──────────────────────────────────────────────────────────────
   deploy-prod:
     name: "Deploy → PROD"
@@ -250,36 +265,25 @@ jobs:
     runs-on: ubuntu-latest
     environment: prod
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install Snowflake CLI
         run: pip install snowflake-cli
 
-      - name: Write private key to file
+      - name: Write + validate private key
+        env:
+          SNOWFLAKE_KEY_B64: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}
         run: |
-          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}" | base64 -d > /tmp/sf_key.p8
+          printf '%s' "$SNOWFLAKE_KEY_B64" | base64 -d > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
-
-      - name: Write Snowflake CLI config
-        run: |
-          mkdir -p ~/.snowflake
-          cat > ~/.snowflake/config.toml << 'EOF'
-          [connections.prod]
-          account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
-          user = "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}"
-          authenticator = "SNOWFLAKE_JWT"
-          private_key_path = "/tmp/sf_key.p8"
-          role = "DBT_PROD_ROLE"
-          warehouse = "SUPABASE_PROD_WH"
-          database = "SUPABASE_PROD"
-          EOF
-          chmod 600 ~/.snowflake/config.toml
+          python -c "
+          from cryptography.hazmat.primitives.serialization import load_pem_private_key
+          with open('/tmp/sf_key.p8','rb') as f: d = f.read()
+          k = load_pem_private_key(d, password=None)
+          print(f'PASS: {type(k).__name__} {k.key_size}-bit')
+          "
 
       - name: Deploy to PROD
         run: |
@@ -288,8 +292,23 @@ jobs:
             --default-target prod \
             --dbt-version 1.9.0 \
             --env-file-dir . \
-            --connection prod
+            --temporary-connection \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-file /tmp/sf_key.p8 \
+            --role DBT_PROD_ROLE \
+            --warehouse SUPABASE_PROD_WH \
+            --database SUPABASE_PROD
 
       - name: Report deployed version
         run: |
-          snow dbt describe supabase_prod --connection prod
+          snow dbt describe supabase_prod \
+            --temporary-connection \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-file /tmp/sf_key.p8 \
+            --role DBT_PROD_ROLE \
+            --warehouse SUPABASE_PROD_WH \
+            --database SUPABASE_PROD
