@@ -53,7 +53,7 @@ jobs:
           snow dbt deploy supabase_ci_pr_${{ github.run_id }} \
             --source . \
             --default-target dev \
-            --dbt-version 1.9.0 \
+            --dbt-version 1.9.4 \
             --env-file-dir . \
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
@@ -133,7 +133,7 @@ jobs:
           snow dbt deploy supabase_dev \
             --source . \
             --default-target dev \
-            --dbt-version 1.9.0 \
+            --dbt-version 1.9.4 \
             --env-file-dir . \
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
@@ -196,7 +196,7 @@ jobs:
           snow dbt deploy supabase_sit \
             --source . \
             --default-target sit \
-            --dbt-version 1.9.0 \
+            --dbt-version 1.9.4 \
             --env-file-dir . \
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
@@ -259,7 +259,7 @@ jobs:
           snow dbt deploy supabase_uat \
             --source . \
             --default-target uat \
-            --dbt-version 1.9.0 \
+            --dbt-version 1.9.4 \
             --env-file-dir . \
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
@@ -322,7 +322,7 @@ jobs:
           snow dbt deploy supabase_prod \
             --source . \
             --default-target prod \
-            --dbt-version 1.9.0 \
+            --dbt-version 1.9.4 \
             --env-file-dir . \
             -x \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
