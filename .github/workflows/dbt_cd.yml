@@ -1,4 +1,4 @@
-name: dbt CD-Environment Deployment
+name: dbt CD — Environment Deployment
 
 on:
   push:
@@ -59,11 +59,12 @@ jobs:
           SNOWFLAKE_ROLE: "DBT_DEV_ROLE"
           SNOWFLAKE_WAREHOUSE: "SUPABASE_DEV_WH"
           SNOWFLAKE_DATABASE: "SUPABASE_DEV"
+          SNOWFLAKE_SOURCE_DATABASE: "SUPABASE_DEV"
           SNOWFLAKE_PRIVATE_KEY_PATH: "/tmp/sf_key.p8"
         run: |
           pip install dbt-snowflake==1.9.0
           dbt deps
-          dbt docs generate --target dev
+          dbt docs generate --target dev --empty
 
       - name: Upload Manifest Artifact for State Comparison
         uses: actions/upload-artifact@v4
@@ -118,11 +119,12 @@ jobs:
           SNOWFLAKE_ROLE: "DBT_SIT_ROLE"
           SNOWFLAKE_WAREHOUSE: "SUPABASE_SIT_WH"
           SNOWFLAKE_DATABASE: "SUPABASE_SIT"
+          SNOWFLAKE_SOURCE_DATABASE: "SUPABASE_SIT"
           SNOWFLAKE_PRIVATE_KEY_PATH: "/tmp/sf_key.p8"
         run: |
           pip install dbt-snowflake==1.9.0
           dbt deps
-          dbt docs generate --target sit
+          dbt docs generate --target sit --empty
 
       - name: Upload Manifest Artifact for State Comparison
         uses: actions/upload-artifact@v4
@@ -177,11 +179,12 @@ jobs:
           SNOWFLAKE_ROLE: "DBT_UAT_ROLE"
           SNOWFLAKE_WAREHOUSE: "SUPABASE_UAT_WH"
           SNOWFLAKE_DATABASE: "SUPABASE_UAT"
+          SNOWFLAKE_SOURCE_DATABASE: "SUPABASE_UAT"
           SNOWFLAKE_PRIVATE_KEY_PATH: "/tmp/sf_key.p8"
         run: |
           pip install dbt-snowflake==1.9.0
           dbt deps
-          dbt docs generate --target uat
+          dbt docs generate --target uat --empty
 
       - name: Upload Manifest Artifact for State Comparison
         uses: actions/upload-artifact@v4
@@ -236,11 +239,12 @@ jobs:
           SNOWFLAKE_ROLE: "DBT_PROD_ROLE"
           SNOWFLAKE_WAREHOUSE: "SUPABASE_PROD_WH"
           SNOWFLAKE_DATABASE: "SUPABASE_PROD"
+          SNOWFLAKE_SOURCE_DATABASE: "SUPABASE_PROD"
           SNOWFLAKE_PRIVATE_KEY_PATH: "/tmp/sf_key.p8"
         run: |
           pip install dbt-snowflake==1.9.0
           dbt deps
-          dbt docs generate --target prod
+          dbt docs generate --target prod --empty
 
       - name: Upload Manifest Artifact for State Comparison
         uses: actions/upload-artifact@v4

@@ -2,9 +2,7 @@ version: 2
 
 sources:
   - name: raw_snowflake
-    # Source database is injected per environment via env.yml
-    # dev → SOLVEFINS_DATA_V2, and so on (configurable per env)
-    database: "{{ env_var('SNOWFLAKE_SOURCE_DATABASE', 'SOLVEFINS_DATA_V2') }}"
+    database: "{{ env_var('SNOWFLAKE_SOURCE_DATABASE', 'SUPABASE_DEV') }}"
     schema: PUBLIC
     tables:
       - name: ECOM_TABLE
