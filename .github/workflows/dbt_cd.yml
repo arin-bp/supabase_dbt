@@ -1,73 +1,20 @@
-name: dbt CI/CD — Snowflake Native
+name: dbt CD-Environment Deployment
 
 on:
   push:
-    branches: [dev, sit, uat, main]
-  pull_request:
     branches: [dev, sit, uat, main]
 
 permissions:
   contents: read
 
 concurrency:
-  group: deploy-${{ github.ref_name }}
+  group: cd-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
-  pr-validate:
-    name: "PR Validation — dbt deps + parse + compile"
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dbt-snowflake
-        run: pip install dbt-snowflake==1.9.0
-
-      - name: Write RSA Private Key
-        run: |
-          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" | tr -d '\r' > /tmp/sf_key.p8
-          chmod 600 /tmp/sf_key.p8
-
-      - name: Configure dbt profiles.yml
-        run: |
-          mkdir -p ~/.dbt
-          cat > ~/.dbt/profiles.yml << 'EOF'
-          snowflake_profile:
-            target: dev
-            outputs:
-              dev:
-                type: snowflake
-                account: "${{ secrets.SNOWFLAKE_ACCOUNT }}"
-                user: "SVC_DBT_DEV"
-                private_key_path: "/tmp/sf_key.p8"
-                role: "DBT_DEV_ROLE"
-                warehouse: "SUPABASE_DEV_WH"
-                database: "SUPABASE_DEV"
-                schema: "PUBLIC"
-                threads: 4
-          EOF
-
-      - name: 1. Verify Packages (dbt deps)
-        run: dbt deps --profiles-dir ~/.dbt
-
-      - name: 2. Verify Syntax, Jinja, DAG & ref() (dbt parse)
-        run: dbt parse --profiles-dir ~/.dbt
-
-      - name: 3. Verify Model SQL Compilation (dbt compile)
-        run: dbt compile --profiles-dir ~/.dbt --target dev
-
   deploy-dev:
     name: "Deploy -> DEV"
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     environment: dev
     steps:
@@ -107,7 +54,7 @@ jobs:
 
   deploy-sit:
     name: "Deploy -> SIT"
-    if: github.event_name == 'push' && github.ref == 'refs/heads/sit'
+    if: github.ref == 'refs/heads/sit'
     runs-on: ubuntu-latest
     environment: sit
     steps:
@@ -147,7 +94,7 @@ jobs:
 
   deploy-uat:
     name: "Deploy -> UAT"
-    if: github.event_name == 'push' && github.ref == 'refs/heads/uat'
+    if: github.ref == 'refs/heads/uat'
     runs-on: ubuntu-latest
     environment: uat
     steps:
@@ -187,7 +134,7 @@ jobs:
 
   deploy-prod:
     name: "Deploy -> PROD"
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: prod
     steps:
