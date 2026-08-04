@@ -1,4 +1,4 @@
-name: dbt CI/CD-Snowflake Native
+name: dbt CI/CD — Snowflake Native
 
 on:
   push:
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   pr-validate:
-    name: "PR Validation-dbt deps, parse and compile"
+    name: "PR Validation — dbt deps, parse and compile"
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
@@ -27,11 +27,13 @@ jobs:
         with:
           cli-version: "latest"
 
-      - run: |
-          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" > /tmp/sf_key.p8
+      - name: Write RSA Private Key
+        run: |
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" | tr -d '\r' > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
 
-      - run: |
+      - name: Configure Snowflake CLI Connection
+        run: |
           snow connection add \
             --connection-name default \
             --default \
@@ -45,7 +47,8 @@ jobs:
             --database SUPABASE_DEV \
             --schema PUBLIC
 
-      - run: snow connection test
+      - name: Verify Snowflake Connection
+        run: snow connection test
 
       - name: Deploy Ephemeral CI Project
         run: |
@@ -87,7 +90,7 @@ jobs:
           cli-version: "latest"
 
       - run: |
-          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" > /tmp/sf_key.p8
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" | tr -d '\r' > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
 
       - run: |
@@ -127,7 +130,7 @@ jobs:
           cli-version: "latest"
 
       - run: |
-          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}" > /tmp/sf_key.p8
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}" | tr -d '\r' > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
 
       - run: |
@@ -167,7 +170,7 @@ jobs:
           cli-version: "latest"
 
       - run: |
-          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}" > /tmp/sf_key.p8
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}" | tr -d '\r' > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
 
       - run: |
@@ -207,7 +210,7 @@ jobs:
           cli-version: "latest"
 
       - run: |
-          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}" > /tmp/sf_key.p8
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}" | tr -d '\r' > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
 
       - run: |
