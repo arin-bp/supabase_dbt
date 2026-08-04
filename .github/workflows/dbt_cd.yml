@@ -52,6 +52,25 @@ jobs:
 
       - run: snow dbt describe supabase_dev
 
+      - name: Generate dbt Documentation
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: "SVC_DBT_DEV"
+          SNOWFLAKE_ROLE: "DBT_DEV_ROLE"
+          SNOWFLAKE_WAREHOUSE: "SUPABASE_DEV_WH"
+          SNOWFLAKE_DATABASE: "SUPABASE_DEV"
+          SNOWFLAKE_PRIVATE_KEY_PATH: "/tmp/sf_key.p8"
+        run: |
+          pip install dbt-snowflake==1.9.0
+          dbt deps
+          dbt docs generate --target dev
+
+      - name: Upload Manifest Artifact for State Comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-manifest
+          path: target/manifest.json
+
   deploy-sit:
     name: "Deploy -> SIT"
     if: github.ref == 'refs/heads/sit'
@@ -91,6 +110,25 @@ jobs:
             --dbt-version 1.9.4
 
       - run: snow dbt describe supabase_sit
+
+      - name: Generate dbt Documentation
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: "SVC_DBT_SIT"
+          SNOWFLAKE_ROLE: "DBT_SIT_ROLE"
+          SNOWFLAKE_WAREHOUSE: "SUPABASE_SIT_WH"
+          SNOWFLAKE_DATABASE: "SUPABASE_SIT"
+          SNOWFLAKE_PRIVATE_KEY_PATH: "/tmp/sf_key.p8"
+        run: |
+          pip install dbt-snowflake==1.9.0
+          dbt deps
+          dbt docs generate --target sit
+
+      - name: Upload Manifest Artifact for State Comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-manifest
+          path: target/manifest.json
 
   deploy-uat:
     name: "Deploy -> UAT"
@@ -132,6 +170,25 @@ jobs:
 
       - run: snow dbt describe supabase_uat
 
+      - name: Generate dbt Documentation
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: "SVC_DBT_UAT"
+          SNOWFLAKE_ROLE: "DBT_UAT_ROLE"
+          SNOWFLAKE_WAREHOUSE: "SUPABASE_UAT_WH"
+          SNOWFLAKE_DATABASE: "SUPABASE_UAT"
+          SNOWFLAKE_PRIVATE_KEY_PATH: "/tmp/sf_key.p8"
+        run: |
+          pip install dbt-snowflake==1.9.0
+          dbt deps
+          dbt docs generate --target uat
+
+      - name: Upload Manifest Artifact for State Comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-manifest
+          path: target/manifest.json
+
   deploy-prod:
     name: "Deploy -> PROD"
     if: github.ref == 'refs/heads/main'
@@ -171,3 +228,22 @@ jobs:
             --dbt-version 1.9.4
 
       - run: snow dbt describe supabase_prod
+
+      - name: Generate dbt Documentation
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: "SVC_DBT_PROD"
+          SNOWFLAKE_ROLE: "DBT_PROD_ROLE"
+          SNOWFLAKE_WAREHOUSE: "SUPABASE_PROD_WH"
+          SNOWFLAKE_DATABASE: "SUPABASE_PROD"
+          SNOWFLAKE_PRIVATE_KEY_PATH: "/tmp/sf_key.p8"
+        run: |
+          pip install dbt-snowflake==1.9.0
+          dbt deps
+          dbt docs generate --target prod
+
+      - name: Upload Manifest Artifact for State Comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-manifest
+          path: target/manifest.json

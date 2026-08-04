@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   pr-validate:
-    name: "PR Validation"
+    name: "PR Validation — Real Data Test & Build"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -37,17 +37,17 @@ jobs:
           printf '%s' "$PRIVATE_KEY" | tr -d '\r' > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
 
-      - name: Verifying Packages using dbt deps
+      - name: 1. Verify Packages (dbt deps)
         env:
           SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
         run: dbt deps
 
-      - name: Verifying Syntax, Jinja, DAG , refs using dbt parse
+      - name: 2. Verify Syntax, Jinja, DAG & refs (dbt parse)
         env:
           SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
         run: dbt parse
 
-      - name: Verifying Model SQL Compilation using dbt compile
+      - name: 3. Execute Models & Data Quality Tests on Real Data (dbt build)
         env:
           SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
           SNOWFLAKE_USER: "SVC_DBT_DEV"
@@ -55,4 +55,4 @@ jobs:
           SNOWFLAKE_WAREHOUSE: "SUPABASE_DEV_WH"
           SNOWFLAKE_DATABASE: "SUPABASE_DEV"
           SNOWFLAKE_PRIVATE_KEY_PATH: "/tmp/sf_key.p8"
-        run: dbt compile --target dev
+        run: dbt build --target dev
