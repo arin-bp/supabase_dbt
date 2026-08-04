@@ -3,7 +3,7 @@ snowflake_profile:
   outputs:
     dev:
       type: snowflake
-      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT', '') }}"
       user: "{{ env_var('SNOWFLAKE_USER', 'SVC_DBT_DEV') }}"
       private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH', '/tmp/sf_key.p8') }}"
       database: SUPABASE_DEV
@@ -14,7 +14,7 @@ snowflake_profile:
 
     sit:
       type: snowflake
-      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT', '') }}"
       user: "{{ env_var('SNOWFLAKE_USER', 'SVC_DBT_SIT') }}"
       private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH', '/tmp/sf_key.p8') }}"
       database: SUPABASE_SIT
@@ -25,7 +25,7 @@ snowflake_profile:
 
     uat:
       type: snowflake
-      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT', '') }}"
       user: "{{ env_var('SNOWFLAKE_USER', 'SVC_DBT_UAT') }}"
       private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH', '/tmp/sf_key.p8') }}"
       database: SUPABASE_UAT
@@ -36,7 +36,7 @@ snowflake_profile:
 
     prod:
       type: snowflake
-      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT', '') }}"
       user: "{{ env_var('SNOWFLAKE_USER', 'SVC_DBT_PROD') }}"
       private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH', '/tmp/sf_key.p8') }}"
       database: SUPABASE_PROD
