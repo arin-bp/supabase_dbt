@@ -12,6 +12,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ──────────────────────────────────────────────────────────────
+  # DEPLOYMENT PIPELINE (DEV / SIT / UAT / PROD)
+  # Executes strictly on branch pushes (merges).
+  # ──────────────────────────────────────────────────────────────
   deploy:
     name: "Deploy → ${{ matrix.env_upper }}"
     strategy:
@@ -54,26 +58,29 @@ jobs:
             user_secret: SNOWFLAKE_SVC_USER_PROD
             key_secret: SNOWFLAKE_PRIVATE_KEY_PROD
 
-    if: github.ref == format('refs/heads/{0}', matrix.branch)
     runs-on: ubuntu-latest
     environment: ${{ matrix.env }}
     permissions:
       contents: read
     steps:
       - name: Checkout repository
+        if: github.ref == format('refs/heads/{0}', matrix.branch)
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Snowflake CLI
+        if: github.ref == format('refs/heads/{0}', matrix.branch)
         uses: snowflakedb/snowflake-actions@9c1ee7cfd0bd103b41d08e530b1e42c26210f4fa # v3.2.0
         with:
           cli-version: "latest"
 
       - name: Write RSA Private Key
+        if: github.ref == format('refs/heads/{0}', matrix.branch)
         run: |
           printf '%s' "${{ secrets[matrix.key_secret] }}" > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
 
       - name: Configure Snowflake CLI Connection
+        if: github.ref == format('refs/heads/{0}', matrix.branch)
         run: |
           snow connection add \
             --connection-name default \
@@ -89,9 +96,11 @@ jobs:
             --schema PUBLIC
 
       - name: Verify Connection
+        if: github.ref == format('refs/heads/{0}', matrix.branch)
         run: snow connection test
 
       - name: Deploy to ${{ matrix.env_upper }}
+        if: github.ref == format('refs/heads/{0}', matrix.branch)
         run: |
           snow dbt deploy supabase_${{ matrix.env }} \
             --source . \
@@ -99,5 +108,6 @@ jobs:
             --dbt-version 1.9.4
 
       - name: Describe deployed project
+        if: github.ref == format('refs/heads/{0}', matrix.branch)
         run: |
           snow dbt describe supabase_${{ matrix.env }}
