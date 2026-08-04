@@ -38,9 +38,13 @@ jobs:
           chmod 600 /tmp/sf_key.p8
 
       - name: Verifying Packages using dbt deps
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
         run: dbt deps
 
       - name: Verifying Syntax, Jinja, DAG , refs using dbt parse
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
         run: dbt parse
 
       - name: Verifying Model SQL Compilation using dbt compile
