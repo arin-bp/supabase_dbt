@@ -12,98 +12,163 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: "Deploy → ${{ matrix.env_upper }}"
-    strategy:
-      fail-fast: true
-      matrix:
-        include:
-          - branch: dev
-            env: dev
-            env_upper: DEV
-            role: DBT_DEV_ROLE
-            warehouse: SUPABASE_DEV_WH
-            database: SUPABASE_DEV
-            user_secret: SNOWFLAKE_SVC_USER_DEV
-            key_secret: SNOWFLAKE_PRIVATE_KEY_DEV
-
-          - branch: sit
-            env: sit
-            env_upper: SIT
-            role: DBT_SIT_ROLE
-            warehouse: SUPABASE_SIT_WH
-            database: SUPABASE_SIT
-            user_secret: SNOWFLAKE_SVC_USER_SIT
-            key_secret: SNOWFLAKE_PRIVATE_KEY_SIT
-
-          - branch: uat
-            env: uat
-            env_upper: UAT
-            role: DBT_UAT_ROLE
-            warehouse: SUPABASE_UAT_WH
-            database: SUPABASE_UAT
-            user_secret: SNOWFLAKE_SVC_USER_UAT
-            key_secret: SNOWFLAKE_PRIVATE_KEY_UAT
-
-          - branch: main
-            env: prod
-            env_upper: PROD
-            role: DBT_PROD_ROLE
-            warehouse: SUPABASE_PROD_WH
-            database: SUPABASE_PROD
-            user_secret: SNOWFLAKE_SVC_USER_PROD
-            key_secret: SNOWFLAKE_PRIVATE_KEY_PROD
-
+  deploy-dev:
+    name: "Deploy → DEV"
+    if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
-    environment: ${{ matrix.env }}
-    permissions:
-      contents: read
+    environment: dev
     steps:
-      - name: Checkout repository
-        if: github.ref == format('refs/heads/{0}', matrix.branch)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Snowflake CLI
-        if: github.ref == format('refs/heads/{0}', matrix.branch)
-        uses: snowflakedb/snowflake-actions@v3
+      - uses: snowflakedb/snowflake-actions@v3
         with:
           cli-version: "latest"
 
-      - name: Write RSA Private Key
-        if: github.ref == format('refs/heads/{0}', matrix.branch)
-        run: |
-          printf '%s' "${{ secrets[matrix.key_secret] }}" > /tmp/sf_key.p8
+      - run: |
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" > /tmp/sf_key.p8
           chmod 600 /tmp/sf_key.p8
 
-      - name: Configure Snowflake CLI Connection
-        if: github.ref == format('refs/heads/{0}', matrix.branch)
-        run: |
+      - run: |
           snow connection add \
             --connection-name default \
             --default \
             --no-interactive \
             --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
-            --user "${{ secrets[matrix.user_secret] }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
             --authenticator SNOWFLAKE_JWT \
             --private-key-path /tmp/sf_key.p8 \
-            --role "${{ matrix.role }}" \
-            --warehouse "${{ matrix.warehouse }}" \
-            --database "${{ matrix.database }}" \
+            --role DBT_DEV_ROLE \
+            --warehouse SUPABASE_DEV_WH \
+            --database SUPABASE_DEV \
             --schema PUBLIC
 
-      - name: Verify Connection
-        if: github.ref == format('refs/heads/{0}', matrix.branch)
-        run: snow connection test
+      - run: snow connection test
 
-      - name: Deploy to ${{ matrix.env_upper }}
-        if: github.ref == format('refs/heads/{0}', matrix.branch)
-        run: |
-          snow dbt deploy supabase_${{ matrix.env }} \
+      - run: |
+          snow dbt deploy supabase_dev \
             --source . \
-            --default-target ${{ matrix.env }} \
+            --default-target dev \
             --dbt-version 1.9.4
 
-      - name: Describe deployed project
-        if: github.ref == format('refs/heads/{0}', matrix.branch)
-        run: |
-          snow dbt describe supabase_${{ matrix.env }}
+      - run: snow dbt describe supabase_dev
+
+  deploy-sit:
+    name: "Deploy → SIT"
+    if: github.ref == 'refs/heads/sit'
+    runs-on: ubuntu-latest
+    environment: sit
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: snowflakedb/snowflake-actions@v3
+        with:
+          cli-version: "latest"
+
+      - run: |
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_SIT }}" > /tmp/sf_key.p8
+          chmod 600 /tmp/sf_key.p8
+
+      - run: |
+          snow connection add \
+            --connection-name default \
+            --default \
+            --no-interactive \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_SIT }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-path /tmp/sf_key.p8 \
+            --role DBT_SIT_ROLE \
+            --warehouse SUPABASE_SIT_WH \
+            --database SUPABASE_SIT \
+            --schema PUBLIC
+
+      - run: snow connection test
+
+      - run: |
+          snow dbt deploy supabase_sit \
+            --source . \
+            --default-target sit \
+            --dbt-version 1.9.4
+
+      - run: snow dbt describe supabase_sit
+
+  deploy-uat:
+    name: "Deploy → UAT"
+    if: github.ref == 'refs/heads/uat'
+    runs-on: ubuntu-latest
+    environment: uat
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Snowflake CLI
+        uses: snowflakedb/snowflake-actions@v3
+        with:
+          cli-version: "latest"
+
+      - run: |
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_UAT }}" > /tmp/sf_key.p8
+          chmod 600 /tmp/sf_key.p8
+
+      - run: |
+          snow connection add \
+            --connection-name default \
+            --default \
+            --no-interactive \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_UAT }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-path /tmp/sf_key.p8 \
+            --role DBT_UAT_ROLE \
+            --warehouse SUPABASE_UAT_WH \
+            --database SUPABASE_UAT \
+            --schema PUBLIC
+
+      - run: snow connection test
+
+      - run: |
+          snow dbt deploy supabase_uat \
+            --source . \
+            --default-target uat \
+            --dbt-version 1.9.4
+
+      - run: snow dbt describe supabase_uat
+
+  deploy-prod:
+    name: "Deploy → PROD"
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: snowflakedb/snowflake-actions@v3
+        with:
+          cli-version: "latest"
+
+      - run: |
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_PROD }}" > /tmp/sf_key.p8
+          chmod 600 /tmp/sf_key.p8
+
+      - run: |
+          snow connection add \
+            --connection-name default \
+            --default \
+            --no-interactive \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_PROD }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-path /tmp/sf_key.p8 \
+            --role DBT_PROD_ROLE \
+            --warehouse SUPABASE_PROD_WH \
+            --database SUPABASE_PROD \
+            --schema PUBLIC
+
+      - run: snow connection test
+
+      - run: |
+          snow dbt deploy supabase_prod \
+            --source . \
+            --default-target prod \
+            --dbt-version 1.9.4
+
+      - run: snow dbt describe supabase_prod
