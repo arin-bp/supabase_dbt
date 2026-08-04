@@ -41,7 +41,7 @@ jobs:
         run: |
           mkdir -p ~/.dbt
           cat > ~/.dbt/profiles.yml << 'EOF'
-          supabase_dbt:
+          snowflake_profile:
             target: dev
             outputs:
               dev:
@@ -57,13 +57,13 @@ jobs:
           EOF
 
       - name: 1. Verify Packages (dbt deps)
-        run: dbt deps
+        run: dbt deps --profiles-dir ~/.dbt
 
       - name: 2. Verify Syntax, Jinja, DAG & ref() (dbt parse)
-        run: dbt parse
+        run: dbt parse --profiles-dir ~/.dbt
 
       - name: 3. Verify Model SQL Compilation (dbt compile)
-        run: dbt compile --target dev
+        run: dbt compile --profiles-dir ~/.dbt --target dev
 
   deploy-dev:
     name: "Deploy -> DEV"
