@@ -18,6 +18,7 @@ jobs:
     name: "PR Validation — dbt deps, parse and compile"
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    environment: dev
     permissions:
       contents: read
     steps:
