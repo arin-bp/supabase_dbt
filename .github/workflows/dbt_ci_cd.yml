@@ -1,4 +1,4 @@
-name: dbt CI/CD — Snowflake Native
+name: dbt CI/CD-Snowflake Native
 
 on:
   push:
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   pr-validate:
-    name: "PR Validation-dbt deps + parse + compile"
+    name: "PR Validation-dbt deps, parse and compile"
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
@@ -75,7 +75,7 @@ jobs:
           snow dbt drop supabase_ci_pr_${{ github.run_id }} || true
 
   deploy-dev:
-    name: "Deploy → DEV"
+    name: "Deploy -> DEV"
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     environment: dev
@@ -115,7 +115,7 @@ jobs:
       - run: snow dbt describe supabase_dev
 
   deploy-sit:
-    name: "Deploy → SIT"
+    name: "Deploy -> SIT"
     if: github.event_name == 'push' && github.ref == 'refs/heads/sit'
     runs-on: ubuntu-latest
     environment: sit
@@ -155,7 +155,7 @@ jobs:
       - run: snow dbt describe supabase_sit
 
   deploy-uat:
-    name: "Deploy → UAT"
+    name: "Deploy -> UAT"
     if: github.event_name == 'push' && github.ref == 'refs/heads/uat'
     runs-on: ubuntu-latest
     environment: uat
@@ -195,7 +195,7 @@ jobs:
       - run: snow dbt describe supabase_uat
 
   deploy-prod:
-    name: "Deploy → PROD"
+    name: "Deploy -> PROD"
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: prod
