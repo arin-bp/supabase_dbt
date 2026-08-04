@@ -1,7 +1,9 @@
-name: dbt CD-Snowflake Native
+name: dbt CI/CD — Snowflake Native
 
 on:
   push:
+    branches: [dev, sit, uat, main]
+  pull_request:
     branches: [dev, sit, uat, main]
 
 permissions:
@@ -12,9 +14,69 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  pr-validate:
+    name: "PR Validation-dbt deps + parse + compile"
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: snowflakedb/snowflake-actions@v3
+        with:
+          cli-version: "latest"
+
+      - run: |
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY_DEV }}" > /tmp/sf_key.p8
+          chmod 600 /tmp/sf_key.p8
+
+      - run: |
+          snow connection add \
+            --connection-name default \
+            --default \
+            --no-interactive \
+            --account "${{ secrets.SNOWFLAKE_ACCOUNT }}" \
+            --user "${{ secrets.SNOWFLAKE_SVC_USER_DEV }}" \
+            --authenticator SNOWFLAKE_JWT \
+            --private-key-path /tmp/sf_key.p8 \
+            --role DBT_DEV_ROLE \
+            --warehouse SUPABASE_DEV_WH \
+            --database SUPABASE_DEV \
+            --schema PUBLIC
+
+      - run: snow connection test
+
+      - name: Deploy Ephemeral CI Project
+        run: |
+          snow dbt deploy supabase_ci_pr_${{ github.run_id }} \
+            --source . \
+            --default-target dev \
+            --dbt-version 1.9.4
+
+      - name: Verifying Packages (dbt deps)
+        run: |
+          snow dbt execute supabase_ci_pr_${{ github.run_id }} \
+            --command "dbt deps"
+
+      - name: Verifying Syntax, Jinja, DAG & ref() (dbt parse)
+        run: |
+          snow dbt execute supabase_ci_pr_${{ github.run_id }} \
+            --command "dbt parse"
+
+      - name: Verifying Model SQL Compilation (dbt compile)
+        run: |
+          snow dbt execute supabase_ci_pr_${{ github.run_id }} \
+            --command "dbt compile --target dev"
+
+      - name: Cleanup Ephemeral Project
+        if: always()
+        run: |
+          snow dbt drop supabase_ci_pr_${{ github.run_id }} || true
+
   deploy-dev:
-    name: "Deploy -> DEV"
-    if: github.ref == 'refs/heads/dev'
+    name: "Deploy → DEV"
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     environment: dev
     steps:
@@ -53,8 +115,8 @@ jobs:
       - run: snow dbt describe supabase_dev
 
   deploy-sit:
-    name: "Deploy -> SIT"
-    if: github.ref == 'refs/heads/sit'
+    name: "Deploy → SIT"
+    if: github.event_name == 'push' && github.ref == 'refs/heads/sit'
     runs-on: ubuntu-latest
     environment: sit
     steps:
@@ -93,15 +155,14 @@ jobs:
       - run: snow dbt describe supabase_sit
 
   deploy-uat:
-    name: "Deploy -> UAT"
-    if: github.ref == 'refs/heads/uat'
+    name: "Deploy → UAT"
+    if: github.event_name == 'push' && github.ref == 'refs/heads/uat'
     runs-on: ubuntu-latest
     environment: uat
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Snowflake CLI
-        uses: snowflakedb/snowflake-actions@v3
+      - uses: snowflakedb/snowflake-actions@v3
         with:
           cli-version: "latest"
 
@@ -134,8 +195,8 @@ jobs:
       - run: snow dbt describe supabase_uat
 
   deploy-prod:
-    name: "Deploy -> PROD"
-    if: github.ref == 'refs/heads/main'
+    name: "Deploy → PROD"
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: prod
     steps:
