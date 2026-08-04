@@ -1,4 +1,4 @@
-name: dbt CD — Snowflake Native
+name: dbt CD-Snowflake Native
 
 on:
   push:
@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   deploy-dev:
-    name: "Deploy → DEV"
+    name: "Deploy -> DEV"
     if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     environment: dev
@@ -53,7 +53,7 @@ jobs:
       - run: snow dbt describe supabase_dev
 
   deploy-sit:
-    name: "Deploy → SIT"
+    name: "Deploy -> SIT"
     if: github.ref == 'refs/heads/sit'
     runs-on: ubuntu-latest
     environment: sit
@@ -93,7 +93,7 @@ jobs:
       - run: snow dbt describe supabase_sit
 
   deploy-uat:
-    name: "Deploy → UAT"
+    name: "Deploy -> UAT"
     if: github.ref == 'refs/heads/uat'
     runs-on: ubuntu-latest
     environment: uat
@@ -134,7 +134,7 @@ jobs:
       - run: snow dbt describe supabase_uat
 
   deploy-prod:
-    name: "Deploy → PROD"
+    name: "Deploy -> PROD"
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: prod
