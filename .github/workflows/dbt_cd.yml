@@ -1,4 +1,4 @@
-name: dbt CD — Environment Deployment
+name: dbt CD - Environment Deployment
 
 on:
   push:
@@ -52,7 +52,7 @@ jobs:
 
       - run: snow dbt describe supabase_dev
 
-      - name: Generate dbt Documentation
+      - name: Generating dbt Documentation
         env:
           SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
           SNOWFLAKE_USER: "SVC_DBT_DEV"
@@ -66,7 +66,7 @@ jobs:
           dbt deps
           dbt docs generate --target dev --empty-catalog
 
-      - name: Upload Manifest Artifact for State Comparison
+      - name: Uploading the  Manifest Artifact for State Comparison
         uses: actions/upload-artifact@v4
         with:
           name: prod-manifest
