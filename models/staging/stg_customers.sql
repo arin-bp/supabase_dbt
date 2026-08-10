@@ -1,13 +1,11 @@
-{{
-    config(
-        materialized='table',
-        tags=['snowflake', 'stg', 'asset'],
-        alias='stg_customers',
-    )
-}}
-SELECT DISTINCT
-    customer_id AS CUSTOMER_ID,
-    customer_first_name AS CUSTOMER_FIRST_NAME,
-    customer_last_name AS CUSTOMER_LAST_NAME,
-    customer_email AS CUSTOMER_EMAIL
-FROM {{ source('raw_snowflake', var('source_table', 'ECOM_TABLE')) }}
+WITH source AS (
+    SELECT * FROM {{ ref('raw_customers') }}
+)
+SELECT
+    customer_id,
+    first_name,
+    last_name,
+    CONCAT(first_name, ' ', last_name) AS full_name,
+    email,
+    created_at
+FROM source

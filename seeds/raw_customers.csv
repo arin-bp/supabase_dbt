@@ -1,0 +1,6 @@
+customer_id,first_name,last_name,email,created_at
+1,Arin,Dhimar,arin.dhimar@bluepineapple.io,2026-01-15 10:00:00
+2,John,Doe,john.doe@example.com,2026-02-01 11:30:00
+3,Sarah,Smith,sarah.smith@example.com,2026-02-15 14:15:00
+4,Michael,Brown,michael.brown@example.com,2026-03-01 09:45:00
+5,Emily,Davis,emily.davis@example.com,2026-03-10 16:20:00

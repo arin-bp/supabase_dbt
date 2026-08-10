@@ -1,0 +1,15 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: "Customer dimensional table with order aggregations"
+    columns:
+      - name: customer_id
+        description: "Primary key of customer"
+        tests:
+          - unique
+          - not_null
+      - name: email
+        description: "Customer email address"
+        tests:
+          - not_null
