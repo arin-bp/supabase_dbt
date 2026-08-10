@@ -1,18 +1,19 @@
 {% macro generate_schema_name(custom_schema_name, node) -%}
 
     {%- set default_schema = target.schema -%}
-    {%- set user_prefix = env_var('DBT_USER_PREFIX', env_var('USER', env_var('USERNAME', ''))) | upper | replace('.', '_') -%}
+    {# Get Snowflake session username #}
+    {%- set sf_user = env_var('DBT_USER_PREFIX', target.user) | upper | replace('.', '_') | replace('-', '_') -%}
 
-    {%- if target.name == 'dev' and user_prefix != '' -%}
-        {# ONLY IN DEV FOR INDIVIDUAL DEVELOPERS: Add user prefix (e.g. PUBLIC_ARIN) #}
+    {%- if target.name in ['dev', 'sit', 'uat'] and not sf_user.startswith('SVC_') -%}
+        {# DEV, SIT, UAT for Human Users: Append User Prefix (e.g. PUBLIC_ARIN_DHIMAR) #}
         {%- if custom_schema_name is none -%}
-            {{ default_schema }}_{{ user_prefix }}
+            {{ default_schema }}_{{ sf_user }}
         {%- else -%}
-            {{ custom_schema_name | trim }}_{{ user_prefix }}
+            {{ custom_schema_name | trim }}_{{ sf_user }}
         {%- endif -%}
 
     {%- else -%}
-        {# FOR PROD, SIT, UAT, AND CI/CD DEPLOYMENTS: ALWAYS USE CLEAN PUBLIC SCHEMA #}
+        {# PROD (and Service Accounts in DEV/SIT/UAT): ALWAYS Clean PUBLIC Schema #}
         {%- if custom_schema_name is none -%}
             {{ default_schema }}
         {%- else -%}
