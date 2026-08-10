@@ -6,10 +6,16 @@
     )
 }}
 
-SELECT DISTINCT
-    product_id AS PRODUCT_ID,
-    product_sku as PRODUCT_SKU,
-    product_category AS PRODUCT_CATEGORY,
-    unit_price AS UNIT_PRICE,
-    discount_rate AS DISCOUNT_RATE
-FROM {{ source('raw_snowflake', var('source_table', 'ECOM_TABLE')) }}
+SELECT
+    1 AS product_id,
+    'SKU-1001' AS product_sku,
+    'ELECTRONICS' AS product_category,
+    250.00 AS unit_price,
+    0.00 AS discount_rate
+UNION ALL
+SELECT
+    2 AS product_id,
+    'SKU-1002' AS product_sku,
+    'APPAREL' AS product_category,
+    125.50 AS unit_price,
+    0.05 AS discount_rate

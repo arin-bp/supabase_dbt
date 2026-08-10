@@ -7,36 +7,26 @@
 }}
 
 WITH orders AS (
-    
     SELECT * FROM {{ ref('stg_orders') }}
-
 ),
-
 products AS (
-
     SELECT * FROM {{ ref('stg_products') }}
-
 ),
-
 joined AS (
-
     SELECT
-        o.transaction_id,
-        o.transaction_timestamp,
+        o.order_id,
+        o.order_date,
         o.customer_id,
-        o.product_id,
+        1 AS product_id,
         p.product_sku,
         p.product_category,
-        o.quantity,
+        1 AS quantity,
         p.unit_price,
         p.discount_rate,
-        (o.quantity * p.unit_price) AS gross_revenue,
-        ((o.quantity * p.unit_price) * (1 - COALESCE(p.discount_rate, 0))) AS net_revenue,
-        o.payment_method,
-        o.order_status
+        o.amount AS gross_revenue,
+        (o.amount * (1 - COALESCE(p.discount_rate, 0))) AS net_revenue,
+        o.status AS order_status
     FROM orders o
-    LEFT JOIN products p ON o.product_id = p.product_id
-
+    LEFT JOIN products p ON p.product_id = 1
 )
-
 SELECT * FROM joined

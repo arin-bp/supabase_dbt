@@ -7,44 +7,32 @@
 }}
 
 WITH orders AS (
-
     SELECT * FROM {{ ref('stg_orders') }}
-
 ),
-
 customers AS (
-
     SELECT * FROM {{ ref('stg_customers') }}
-
 ),
-
 aggregated AS (
-
     SELECT
         customer_id,
-        COUNT(transaction_id) AS total_orders,
-        MIN(transaction_timestamp) AS first_order_date,
-        MAX(transaction_timestamp) AS latest_order_date,
-        SUM(quantity) AS total_units_ordered
+        COUNT(order_id) AS total_orders,
+        MIN(order_date) AS first_order_date,
+        MAX(order_date) AS latest_order_date,
+        SUM(amount) AS total_spend
     FROM orders
     GROUP BY customer_id
-
 ),
-
 joined AS (
-
     SELECT
         c.customer_id,
-        c.customer_first_name,
-        c.customer_last_name,
-        c.customer_email,
+        c.first_name,
+        c.last_name,
+        c.email,
         COALESCE(a.total_orders, 0) AS total_orders,
         a.first_order_date,
         a.latest_order_date,
-        COALESCE(a.total_units_ordered, 0) AS total_units_ordered
+        COALESCE(a.total_spend, 0.00) AS total_spend
     FROM customers c
     LEFT JOIN aggregated a ON c.customer_id = a.customer_id
-
 )
-
 SELECT * FROM joined
