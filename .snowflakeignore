@@ -1,0 +1,9 @@
+# Ignore key files, local scripts, and setup folders from Snowflake dbt stages
+snowflake_setup/
+*.p8
+*.pub
+*.pem
+.git/
+.github/
+.venv/
+__pycache__/
